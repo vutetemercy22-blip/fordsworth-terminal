@@ -1,0 +1,38 @@
+macro_events:
+  - date: "This week"
+    event: "US inflation data"
+    relevance: "Important for interest rates, equity valuation multiples, and growth stocks."
+
+  - date: "This week"
+    event: "US Federal Reserve commentary"
+    relevance: "Important for discount rates, USD strength, and growth-equity valuation pressure."
+
+  - date: "This week"
+    event: "US jobless claims / labour market data"
+    relevance: "Relevant for recession risk, rates expectations, and market risk appetite."
+
+  - date: "This week"
+    event: "South African Reserve Bank / ZAR monitoring"
+    relevance: "Relevant for USD/ZAR, local market risk, and South African financial conditions."
+
+portfolio_event_rules:
+  AAPL:
+    watch_for:
+      - "Product launches"
+      - "Services revenue commentary"
+      - "China demand updates"
+      - "App Store regulatory developments"
+
+  MSFT:
+    watch_for:
+      - "Azure growth commentary"
+      - "Copilot adoption"
+      - "AI capex commentary"
+      - "Enterprise software demand"
+
+  NVDA:
+    watch_for:
+      - "AI infrastructure demand"
+      - "Hyperscaler capex"
+      - "Export-control developments"
+      - "Data-centre revenue commentary"

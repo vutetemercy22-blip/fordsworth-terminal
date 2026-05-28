@@ -1,0 +1,22 @@
+app:
+  name: "Portfolio Intelligence Terminal"
+  version: "0.1.0"
+  environment: "development"
+
+timezone:
+  default: "Africa/Harare"
+
+paths:
+  portfolio_dir: "data/portfolio"
+  watchlist_file: "data/watchlist/watchlist.yaml"
+
+  reports:
+    morning_briefs: "reports/morning_briefs"
+    thesis_reviews: "reports/thesis_reviews"
+    weekly_calendars: "reports/weekly_calendars"
+    market_curator: "reports/market_curator"
+    deep_research: "reports/deep_research"
+    valuation_reports: "reports/valuation_reports"
+dashboard:
+  title: "Portfolio Intelligence Terminal"
+  subtitle: "Five-agent investment research operating system"

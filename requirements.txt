@@ -1,0 +1,13 @@
+streamlit
+pandas
+pyyaml
+apscheduler
+python-dateutil
+requests
+groq
+yfinance
+python-docx
+google-api-python-client
+google-auth
+google-auth-httplib2
+google-auth-oauthlib

@@ -1,0 +1,179 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [5 0 R 7 0 R 9 0 R] /Count 3 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Length 1363 >>
+stream
+BT
+/F1 10 Tf
+50 790 Td
+(Investment Pack NVDA) Tj
+0 -14 Td () Tj
+0 -14 Td () Tj
+0 -14 Td (# INVESTMENT PACK NVDA) Tj
+0 -14 Td () Tj
+0 -14 Td () Tj
+0 -14 Td (Target ticker / company: NVDA) Tj
+0 -14 Td () Tj
+0 -14 Td () Tj
+0 -14 Td (## PACK CONTENTS) Tj
+0 -14 Td () Tj
+0 -14 Td () Tj
+0 -14 Td (- Deep Research / Analyst Modules) Tj
+0 -14 Td (- Valuation Reports) Tj
+0 -14 Td () Tj
+0 -14 Td (---) Tj
+0 -14 Td () Tj
+0 -14 Td () Tj
+0 -14 Td (# DEEP RESEARCH / ANALYST MODULES) Tj
+0 -14 Td () Tj
+0 -14 Td () Tj
+0 -14 Td (Source file: 2026-05-28_16-06-20_earnings_call_decode_aapl.md) Tj
+0 -14 Td () Tj
+0 -14 Td () Tj
+0 -14 Td (# EARNINGS CALL DECODE — AAPL) Tj
+0 -14 Td () Tj
+0 -14 Td () Tj
+0 -14 Td () Tj
+0 -14 Td (## KEY TOPICS DETECTED) Tj
+0 -14 Td () Tj
+0 -14 Td () Tj
+0 -14 Td (- No tracked keywords detected. Review transcript manually.) Tj
+0 -14 Td () Tj
+0 -14 Td () Tj
+0 -14 Td (## TRANSCRIPT / NOTES EXTRACT) Tj
+0 -14 Td () Tj
+0 -14 Td () Tj
+0 -14 Td (No transcript supplied.) Tj
+0 -14 Td () Tj
+0 -14 Td () Tj
+0 -14 Td (## ANALYST FOLLOW-UP) Tj
+0 -14 Td () Tj
+0 -14 Td () Tj
+0 -14 Td (- Compare tone to prior quarter.) Tj
+0 -14 Td (- Identify guidance changes.) Tj
+0 -14 Td (- Check whether narrative matches financials.) Tj
+0 -14 Td (- Feed conclusions into Thesis Tracker.) Tj
+0 -14 Td () Tj
+0 -14 Td () Tj
+0 -14 Td (---) Tj
+0 -14 Td () Tj
+0 -14 Td () Tj
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 4 0 R >>
+endobj
+6 0 obj
+<< /Length 1840 >>
+stream
+BT
+/F1 10 Tf
+50 790 Td
+(# VALUATION REPORTS) Tj
+0 -14 Td () Tj
+0 -14 Td () Tj
+0 -14 Td (Source file: 2026-05-28_16-15-35_valuation_report_nvda.md) Tj
+0 -14 Td () Tj
+0 -14 Td () Tj
+0 -14 Td (# VALUATION REPORT — NVDA) Tj
+0 -14 Td () Tj
+0 -14 Td () Tj
+0 -14 Td (Company: NVIDIA Corporation) Tj
+0 -14 Td () Tj
+0 -14 Td (Current Price: 213.25) Tj
+0 -14 Td () Tj
+0 -14 Td () Tj
+0 -14 Td (## KEY ASSUMPTIONS) Tj
+0 -14 Td () Tj
+0 -14 Td () Tj
+0 -14 Td (- Current Revenue: 1,807,889,884,774.40) Tj
+0 -14 Td (- Net Debt: 0.00) Tj
+0 -14 Td (- Shares Outstanding: 24,222,272,782.11) Tj
+0 -14 Td (- Tax Rate: 21.00%) Tj
+0 -14 Td (- Reinvestment Rate: 5.00%) Tj
+0 -14 Td (- Terminal Growth: 2.50%) Tj
+0 -14 Td (- Forecast Years: 5) Tj
+0 -14 Td () Tj
+0 -14 Td () Tj
+0 -14 Td (## SCENARIO OUTPUT) Tj
+0 -14 Td () Tj
+0 -14 Td () Tj
+0 -14 Td (| Scenario | Revenue Growth | EBIT Margin | WACC | Fair Value | Upside / Downside |) Tj
+0 -14 Td (|---|---:|---:|---:|---:|---:|) Tj
+0 -14 Td (| Bear | 3.00% | 18.00% | 11.00% | 84.74 | -60.26% |) Tj
+0 -14 Td (| Base | 7.00% | 25.00% | 9.00% | 210.34 | -1.37% |) Tj
+0 -14 Td (| Bull | 11.00% | 30.00% | 8.00% | 374.12 | 75.44% |) Tj
+0 -14 Td () Tj
+0 -14 Td () Tj
+0 -14 Td (## ANALYST INTERPRETATION) Tj
+0 -14 Td () Tj
+0 -14 Td () Tj
+0 -14 Td (- Compare the base-case fair value to the current market price.) Tj
+0 -14 Td (- Use the bear case to understand downside risk.) Tj
+0 -14 Td (- Use the bull case to understand upside optionality.) Tj
+0 -14 Td (- Validate revenue growth, margins and WACC using company filings and market data.) Tj
+0 -14 Td () Tj
+0 -14 Td () Tj
+0 -14 Td (## IMPORTANT NOTE) Tj
+0 -14 Td () Tj
+0 -14 Td () Tj
+0 -14 Td (This is a simplified DCF model for research workflow purposes. It should be reviewed and) Tj
+0 -14 Td (validated before investment use.) Tj
+0 -14 Td () Tj
+0 -14 Td () Tj
+ET
+endstream
+endobj
+7 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 6 0 R >>
+endobj
+8 0 obj
+<< /Length 511 >>
+stream
+BT
+/F1 10 Tf
+50 790 Td
+(---) Tj
+0 -14 Td () Tj
+0 -14 Td () Tj
+0 -14 Td () Tj
+0 -14 Td (# ANALYST FINAL CHECKLIST) Tj
+0 -14 Td () Tj
+0 -14 Td () Tj
+0 -14 Td (- Confirm the investment thesis is clearly stated.) Tj
+0 -14 Td (- Confirm red flags and downside risks are documented.) Tj
+0 -14 Td (- Confirm valuation assumptions are reasonable.) Tj
+0 -14 Td (- Confirm position size is aligned with conviction and risk.) Tj
+0 -14 Td (- Confirm the report is ready for management or investment committee review.) Tj
+ET
+endstream
+endobj
+9 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 8 0 R >>
+endobj
+xref
+0 10
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000127 00000 n 
+0000000197 00000 n 
+0000001612 00000 n 
+0000001738 00000 n 
+0000003630 00000 n 
+0000003756 00000 n 
+0000004318 00000 n 
+trailer
+<< /Size 10 /Root 1 0 R >>
+startxref
+4444
+%%EOF

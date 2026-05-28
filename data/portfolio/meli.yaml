@@ -1,0 +1,39 @@
+ticker: MELI
+company_name: MercadoLibre
+asset_type: equity
+sector: E-commerce/ Fintech
+position_status: watchlist
+portfolio_weight: 0.0
+investment_thesis:
+  one_line: MercadoLibre is a high-quality Latin American e-commerce and fintech compounder,
+    driven by marketplace scale, payments adoption, logistics infrastructure, and
+    credit monetisation.
+  core_drivers:
+  - Marketplace gross merchandise volume growth
+  - Mercado Pago payment volume growth
+  - Logistics scale and delivery speed
+  - Credit book quality
+  - Brazil and Mexico market share
+  key_metrics_to_monitor:
+  - GMV growth
+  - Total payment volume
+  - Credit loss ratio
+  - Operating margin
+  - Free cash flow
+  - Active users
+  kill_criteria:
+  - Sustained deterioration in credit losses
+  - Marketplace share loss in core geographies
+  - Fintech growth slows without margin improvement
+  - Regulatory pressure materially impairs payments economics
+valuation:
+  fair_value: ''
+  bear_case: ''
+  bull_case: ''
+  required_return_threshold: ''
+monitoring:
+  overnight_news_priority: normal
+  weekly_thesis_review: true
+  include_in_event_calendar: true
+  include_in_market_curator: true
+notes: []

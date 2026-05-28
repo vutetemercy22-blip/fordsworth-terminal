@@ -1,0 +1,44 @@
+ticker: "AAPL"
+company_name: "Apple Inc."
+asset_type: "equity"
+sector: "Technology"
+position_status: "holding"
+portfolio_weight: 8.5
+
+investment_thesis:
+  one_line: >
+    Apple remains a high-quality compounder driven by ecosystem monetisation,
+    services growth, and durable switching costs.
+
+  core_drivers:
+    - "Services revenue growth"
+    - "Installed base expansion"
+    - "Gross margin resilience"
+    - "Ecosystem monetisation"
+
+  key_metrics_to_monitor:
+    - "Services revenue growth"
+    - "iPhone revenue trend"
+    - "Gross margin"
+    - "China demand"
+
+  kill_criteria:
+    - "Services revenue growth falls below internal threshold for two consecutive quarters"
+    - "Material deterioration in ecosystem pricing power"
+    - "Gross margin compression becomes structural"
+
+valuation:
+  fair_value: 245
+  bear_case: 185
+  bull_case: 290
+  required_return_threshold: 0.12
+
+monitoring:
+  overnight_news_priority: "high"
+  weekly_thesis_review: true
+  include_in_event_calendar: true
+  include_in_market_curator: true
+
+notes:
+  - "Watch whether AI features drive meaningful upgrade demand."
+  - "Monitor regulatory pressure on App Store economics."
