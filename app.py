@@ -6620,6 +6620,406 @@ def render_terminal_health_check():
         st.error("Fix errors before presentation.")
 
 
+
+# ============================================================
+# EXPORT CENTER FALLBACK
+# ============================================================
+
+def clean_export_text(text: str) -> str:
+    """
+    Clean markdown-like text for export.
+    """
+    text = str(text)
+    text = text.replace("**", "")
+    text = text.replace("__", "")
+    text = text.replace("`", "")
+    return text.strip()
+
+
+def export_markdown_to_word_file(content: str, title: str, output_path: Path):
+    """
+    Export markdown-like text to Word. Requires python-docx.
+    """
+    if Document is None:
+        raise ImportError("python-docx is not installed. Add python-docx to requirements.txt")
+
+    doc = Document()
+    doc.add_heading(title, 0)
+
+    for raw_line in str(content).splitlines():
+        line = raw_line.rstrip()
+
+        if not line:
+            doc.add_paragraph("")
+        elif line.startswith("# "):
+            doc.add_heading(clean_export_text(line.replace("# ", "", 1)), level=1)
+        elif line.startswith("## "):
+            doc.add_heading(clean_export_text(line.replace("## ", "", 1)), level=2)
+        elif line.startswith("### "):
+            doc.add_heading(clean_export_text(line.replace("### ", "", 1)), level=3)
+        elif line.startswith("- "):
+            doc.add_paragraph(clean_export_text(line.replace("- ", "", 1)), style="List Bullet")
+        else:
+            doc.add_paragraph(clean_export_text(line))
+
+    doc.save(output_path)
+    return output_path
+
+
+def simple_pdf_escape(text: str) -> str:
+    text = str(text)
+    text = text.replace("\\", "\\\\")
+    text = text.replace("(", "\\(")
+    text = text.replace(")", "\\)")
+    return text
+
+
+def simple_pdf_wrap(text: str, max_chars: int = 92) -> list[str]:
+    words = str(text).split()
+    lines = []
+    current = ""
+
+    for word in words:
+        if len(current) + len(word) + 1 <= max_chars:
+            current = f"{current} {word}".strip()
+        else:
+            if current:
+                lines.append(current)
+            current = word
+
+    if current:
+        lines.append(current)
+
+    return lines or [""]
+
+
+def export_markdown_to_simple_pdf_file(content: str, title: str, output_path: Path):
+    """
+    Built-in simple PDF writer with no external package required.
+    """
+    page_width = 595
+    page_height = 842
+    margin_left = 50
+    top_y = 790
+    line_height = 14
+    bottom_y = 50
+
+    pages = []
+    current_lines = []
+
+    def add_line(line: str):
+        nonlocal current_lines
+        max_lines = int((top_y - bottom_y) / line_height)
+        if len(current_lines) >= max_lines:
+            pages.append(current_lines)
+            current_lines = []
+        current_lines.append(line)
+
+    add_line(title)
+    add_line("")
+
+    for raw_line in str(content).splitlines():
+        line = clean_export_text(raw_line)
+
+        if not line:
+            add_line("")
+            continue
+
+        if raw_line.startswith("#"):
+            add_line("")
+            for wrapped in simple_pdf_wrap(line.upper(), 75):
+                add_line(wrapped)
+            add_line("")
+        elif raw_line.startswith("- "):
+            for wrapped in simple_pdf_wrap("- " + clean_export_text(raw_line[2:]), 90):
+                add_line(wrapped)
+        else:
+            for wrapped in simple_pdf_wrap(line, 92):
+                add_line(wrapped)
+
+    if current_lines:
+        pages.append(current_lines)
+
+    objects = []
+    page_object_numbers = []
+
+    objects.append("<< /Type /Catalog /Pages 2 0 R >>")
+    objects.append("__PAGES__")
+    objects.append("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>")
+
+    next_obj = 4
+
+    for page_lines in pages:
+        content_obj = next_obj
+        page_obj = next_obj + 1
+        next_obj += 2
+
+        stream_lines = ["BT", "/F1 10 Tf", f"{margin_left} {top_y} Td"]
+
+        for idx, line in enumerate(page_lines):
+            safe_line = simple_pdf_escape(line)
+            if idx == 0:
+                stream_lines.append(f"({safe_line}) Tj")
+            else:
+                stream_lines.append(f"0 -{line_height} Td ({safe_line}) Tj")
+
+        stream_lines.append("ET")
+        stream = "\n".join(stream_lines)
+
+        objects.append(f"<< /Length {len(stream.encode('utf-8'))} >>\nstream\n{stream}\nendstream")
+        objects.append(
+            f"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {page_width} {page_height}] "
+            f"/Resources << /Font << /F1 3 0 R >> >> /Contents {content_obj} 0 R >>"
+        )
+        page_object_numbers.append(page_obj)
+
+    kids = " ".join([f"{num} 0 R" for num in page_object_numbers])
+    objects[1] = f"<< /Type /Pages /Kids [{kids}] /Count {len(page_object_numbers)} >>"
+
+    pdf = bytearray()
+    pdf.extend(b"%PDF-1.4\n")
+    offsets = [0]
+
+    for i, obj in enumerate(objects, start=1):
+        offsets.append(len(pdf))
+        pdf.extend(f"{i} 0 obj\n".encode("utf-8"))
+        pdf.extend(obj.encode("utf-8"))
+        pdf.extend(b"\nendobj\n")
+
+    xref_position = len(pdf)
+    pdf.extend(f"xref\n0 {len(objects) + 1}\n".encode("utf-8"))
+    pdf.extend(b"0000000000 65535 f \n")
+
+    for offset in offsets[1:]:
+        pdf.extend(f"{offset:010d} 00000 n \n".encode("utf-8"))
+
+    pdf.extend(
+        f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\nstartxref\n{xref_position}\n%%EOF\n".encode("utf-8")
+    )
+
+    output_path.write_bytes(pdf)
+    return output_path
+
+
+def render_file_download(path: Path, label: str, mime: str):
+    with open(path, "rb") as f:
+        st.download_button(
+            label=label,
+            data=f,
+            file_name=path.name,
+            mime=mime,
+            use_container_width=True,
+        )
+
+
+def get_export_report_sources():
+    return {
+        "Latest Morning Analyst": "morning_briefs",
+        "Latest Market Curator": "market_curator",
+        "Latest Thesis Tracker": "thesis_reviews",
+        "Latest Event Calendar": "weekly_calendars",
+        "Latest Deep Research / Analyst Module": "deep_research",
+        "Latest Valuation Report": "valuation_reports",
+    }
+
+
+def get_latest_export_report(report_type: str):
+    try:
+        reports = list_reports(report_type)
+    except Exception:
+        reports = []
+
+    if not reports:
+        return None, ""
+
+    latest = reports[0]
+
+    try:
+        content = read_report(latest)
+    except Exception:
+        try:
+            content = Path(latest).read_text(encoding="utf-8")
+        except Exception:
+            content = ""
+
+    return latest, content
+
+
+def render_export_center():
+    """
+    Export Center used by Reports.
+    """
+    st.subheader("Export Center")
+    st.caption("Export saved research and valuation outputs to Word or PDF.")
+
+    sources = get_export_report_sources()
+
+    c1, c2 = st.columns([1.2, 1])
+
+    with c1:
+        selected_source = st.selectbox(
+            "Report source",
+            list(sources.keys()),
+            key="export_center_source_fixed",
+        )
+
+    with c2:
+        export_format = st.selectbox(
+            "Export format",
+            ["Word (.docx)", "PDF (.pdf)", "Both Word and PDF"],
+            key="export_center_format_fixed",
+        )
+
+    report_type = sources[selected_source]
+    latest_report, content = get_latest_export_report(report_type)
+
+    if latest_report is None:
+        st.warning(f"No saved report found for: {selected_source}")
+        st.info("Generate a report first from Research or Valuation.")
+        return
+
+    try:
+        default_title = latest_report.stem.replace("_", " ").title()
+    except Exception:
+        default_title = selected_source
+
+    export_title = st.text_input(
+        "Export title",
+        value=default_title,
+        key="export_center_title_fixed",
+    )
+
+    with st.expander("Preview report", expanded=False):
+        st.markdown(content[:4000] + ("\n\n..." if len(content) > 4000 else ""))
+
+    if st.button("Generate Export", use_container_width=True, key="generate_export_center_fixed"):
+        export_dir = Path("exports")
+        export_dir.mkdir(parents=True, exist_ok=True)
+
+        safe_name = re.sub(r"[^A-Za-z0-9_-]+", "_", export_title).strip("_")
+        generated = []
+
+        try:
+            if export_format in ["Word (.docx)", "Both Word and PDF"]:
+                word_path = export_dir / f"{safe_name}.docx"
+                export_markdown_to_word_file(content, export_title, word_path)
+                generated.append(("Word", word_path))
+
+            if export_format in ["PDF (.pdf)", "Both Word and PDF"]:
+                pdf_path = export_dir / f"{safe_name}.pdf"
+                export_markdown_to_simple_pdf_file(content, export_title, pdf_path)
+                generated.append(("PDF", pdf_path))
+
+            st.success("Export generated successfully.")
+
+            for file_type, path in generated:
+                if file_type == "Word":
+                    render_file_download(path, "Download Word Document", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+                else:
+                    render_file_download(path, "Download PDF Document", "application/pdf")
+
+        except Exception as exc:
+            st.error(f"Export failed: {exc}")
+
+
+def render_stock_tear_sheet_export():
+    """
+    Export lightweight stock tear sheet from current snapshot data.
+    """
+    st.subheader("Export Stock Tear Sheet")
+    st.caption("Create a Word/PDF tear sheet for a selected company.")
+
+    ticker = st.text_input(
+        "Ticker",
+        value=st.session_state.get("active_company_ticker", st.session_state.get("home_selected_ticker", "NVDA")),
+        placeholder="Example: AAPL, MSFT, NVDA",
+        key="export_stock_ticker_fixed",
+    ).upper().strip()
+
+    export_format = st.selectbox(
+        "Export format",
+        ["Word (.docx)", "PDF (.pdf)", "Both Word and PDF"],
+        key="export_stock_format_fixed",
+    )
+
+    if not ticker:
+        st.info("Enter a ticker to export a stock tear sheet.")
+        return
+
+    snapshot = fetch_stock_snapshot(ticker)
+    company_name = snapshot.get("company_name", ticker)
+
+    content = f"""# Stock Tear Sheet — {ticker}
+
+## Company Snapshot
+
+- Company: {company_name}
+- Sector: {snapshot.get('sector', 'N/A')}
+- Industry: {snapshot.get('industry', 'N/A')}
+- Currency: {snapshot.get('currency', 'N/A')}
+- Market Cap: {format_large_number(snapshot.get('market_cap'))}
+
+## Price and Market Data
+
+- Latest Close: {format_number_or_na(snapshot.get('latest_close'))}
+- Change: {format_number_or_na(snapshot.get('change'))}
+- Change %: {format_number_or_na(snapshot.get('change_pct'))}%
+- 52W High: {format_number_or_na(snapshot.get('fifty_two_week_high'))}
+- 52W Low: {format_number_or_na(snapshot.get('fifty_two_week_low'))}
+- Beta: {format_number_or_na(snapshot.get('beta'))}
+
+## Valuation
+
+- Forward P/E: {format_number_or_na(snapshot.get('forward_pe'))}
+- Trailing P/E: {format_number_or_na(snapshot.get('trailing_pe'))}
+- Dividend Yield: {format_percent_or_na(snapshot.get('dividend_yield'))}
+
+## Business Summary
+
+{snapshot.get('business_summary', 'No business summary available.')}
+
+## Analyst Follow-Up
+
+- Run Red Flag Scanner.
+- Run Moat Audit.
+- Run Bull vs Bear Test.
+- Run Valuation.
+- Prepare IC Memo if thesis is attractive.
+"""
+
+    with st.expander("Preview stock tear sheet", expanded=False):
+        st.markdown(content)
+
+    if st.button("Generate Stock Tear Sheet Export", use_container_width=True, key="generate_stock_export_fixed"):
+        export_dir = Path("exports")
+        export_dir.mkdir(parents=True, exist_ok=True)
+
+        safe_name = f"Stock_Tear_Sheet_{ticker}"
+        generated = []
+
+        try:
+            if export_format in ["Word (.docx)", "Both Word and PDF"]:
+                word_path = export_dir / f"{safe_name}.docx"
+                export_markdown_to_word_file(content, f"Stock Tear Sheet — {ticker}", word_path)
+                generated.append(("Word", word_path))
+
+            if export_format in ["PDF (.pdf)", "Both Word and PDF"]:
+                pdf_path = export_dir / f"{safe_name}.pdf"
+                export_markdown_to_simple_pdf_file(content, f"Stock Tear Sheet — {ticker}", pdf_path)
+                generated.append(("PDF", pdf_path))
+
+            st.success("Stock tear sheet export generated successfully.")
+
+            for file_type, path in generated:
+                if file_type == "Word":
+                    render_file_download(path, "Download Word Stock Tear Sheet", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+                else:
+                    render_file_download(path, "Download PDF Stock Tear Sheet", "application/pdf")
+
+        except Exception as exc:
+            st.error(f"Export failed: {exc}")
+
+
 def render_reports_view():
     """
     Reports page: Investment Output Center.
