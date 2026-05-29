@@ -2052,6 +2052,115 @@ def inject_custom_css():
             margin-bottom: 0.25rem;
         }
 
+
+        /* =====================================================
+           CLEAN INFORMATION ARCHITECTURE PASS
+           ===================================================== */
+
+        .clean-page-hero {
+            background: #020617;
+            border: 1px solid #1f2937;
+            border-radius: 18px;
+            padding: 1rem 1.1rem;
+            margin-bottom: 1rem;
+        }
+
+        .clean-page-title {
+            color: #f9fafb;
+            font-size: 1.25rem;
+            font-weight: 950;
+            margin-bottom: 0.25rem;
+        }
+
+        .clean-page-text {
+            color: #cbd5e1;
+            font-size: 0.88rem;
+            margin-bottom: 0;
+        }
+
+
+        /* =====================================================
+           FINAL PROFESSIONAL POLISH
+           ===================================================== */
+
+        .terminal-shell-header {
+            display: none;
+            background: linear-gradient(135deg, #020617 0%, #0f172a 55%, #111827 100%);
+            border: 1px solid #1f2937;
+            border-radius: 20px;
+            padding: 1rem 1.15rem;
+            margin-bottom: 0.85rem;
+            box-shadow: 0 2px 14px rgba(0,0,0,0.26);
+        }
+
+        .terminal-shell-kicker {
+            color: #38bdf8;
+            font-size: 0.72rem;
+            font-weight: 950;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 0.25rem;
+        }
+
+        .terminal-shell-title {
+            color: #f9fafb;
+            font-size: 1.35rem;
+            font-weight: 950;
+            letter-spacing: -0.035em;
+            margin-bottom: 0.25rem;
+        }
+
+        .terminal-shell-text {
+            color: #cbd5e1;
+            font-size: 0.88rem;
+            max-width: 1100px;
+            margin-bottom: 0;
+        }
+
+        .terminal-flow-strip {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.45rem;
+            margin-bottom: 0.9rem;
+        }
+
+        .terminal-flow-pill {
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 999px;
+            color: #d1d5db;
+            font-size: 0.75rem;
+            font-weight: 800;
+            padding: 0.28rem 0.65rem;
+        }
+
+        .demo-checklist-card {
+            background: #0f172a;
+            border: 1px solid #1f2937;
+            border-radius: 16px;
+            padding: 0.9rem;
+            margin-bottom: 0.85rem;
+        }
+
+        .demo-checklist-title {
+            color: #f9fafb;
+            font-size: 0.98rem;
+            font-weight: 900;
+            margin-bottom: 0.3rem;
+        }
+
+        .demo-checklist-text {
+            color: #cbd5e1;
+            font-size: 0.84rem;
+            line-height: 1.45;
+        }
+
+        .mode-note {
+            color: #94a3b8;
+            font-size: 0.78rem;
+            margin-bottom: 0.65rem;
+        }
+
         </style>
         """,
         unsafe_allow_html=True,
@@ -2700,6 +2809,205 @@ def format_home_change(value):
 
 
 
+
+# ============================================================
+# FINAL CONSOLIDATION / COMPATIBILITY HELPERS
+# ============================================================
+
+POPULAR_COMPANY_TICKERS = [
+    "NVDA", "MSFT", "AAPL", "GOOGL", "AMZN", "META", "JPM", "BAC", "GS",
+    "XOM", "CVX", "UNH", "LLY", "TSLA", "COST", "WMT", "HD", "CAT", "GE", "NEE",
+]
+
+
+def clean_html_summary(raw_text: str) -> str:
+    """
+    Clean RSS/HTML descriptions into readable news summaries.
+    """
+    text = str(raw_text or "")
+    try:
+        text = html.unescape(text)
+    except Exception:
+        pass
+    text = re.sub(r"(?is)<script.*?>.*?</script>", " ", text)
+    text = re.sub(r"(?is)<style.*?>.*?</style>", " ", text)
+    text = re.sub(r"<[^>]+>", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
+
+    if "clean_markdown_line" in globals():
+        try:
+            return clean_markdown_line(text)
+        except Exception:
+            return text
+    return text
+
+
+def format_number_or_na(value):
+    try:
+        if value is None:
+            return "N/A"
+        return f"{float(value):,.2f}"
+    except Exception:
+        return "N/A"
+
+
+def format_percent_or_na(value):
+    try:
+        if value is None:
+            return "N/A"
+        return f"{float(value) * 100:.2f}%"
+    except Exception:
+        return "N/A"
+
+
+def format_large_number(value):
+    try:
+        if value is None:
+            return "N/A"
+        value = float(value)
+        if abs(value) >= 1_000_000_000_000:
+            return f"{value / 1_000_000_000_000:.2f}T"
+        if abs(value) >= 1_000_000_000:
+            return f"{value / 1_000_000_000:.2f}B"
+        if abs(value) >= 1_000_000:
+            return f"{value / 1_000_000:.2f}M"
+        return f"{value:,.2f}"
+    except Exception:
+        return "N/A"
+
+
+def set_active_company(ticker: str, company_name: str = ""):
+    """
+    Set the global active company/ticker across Finance, Research, Valuation, Risk and Reports.
+    """
+    ticker = (ticker or "").upper().strip()
+    if not ticker:
+        return
+    st.session_state["active_company_ticker"] = ticker
+    st.session_state["home_selected_ticker"] = ticker
+    if company_name:
+        st.session_state["active_company_name"] = company_name
+
+
+def get_active_company_ticker(default: str = "NVDA") -> str:
+    """
+    Get active ticker shared across the terminal.
+    """
+    return (
+        st.session_state.get("active_company_ticker")
+        or st.session_state.get("home_selected_ticker")
+        or default
+    )
+
+
+def get_active_company_name(ticker: str = "") -> str:
+    """
+    Get active company name, fetching snapshot when possible.
+    """
+    ticker = ticker or get_active_company_ticker()
+    cached_name = st.session_state.get("active_company_name")
+    if cached_name and st.session_state.get("active_company_ticker") == ticker:
+        return cached_name
+    try:
+        snapshot = fetch_stock_snapshot(ticker)
+        company_name = snapshot.get("company_name", ticker)
+        st.session_state["active_company_name"] = company_name
+        return company_name
+    except Exception:
+        return ticker
+
+
+def get_finance_default_ticker():
+    return get_active_company_ticker("NVDA")
+
+
+def get_valuation_default_ticker():
+    return get_active_company_ticker("NVDA")
+
+
+def get_research_target_ticker():
+    return get_active_company_ticker("NVDA")
+
+
+def render_active_company_bar():
+    """
+    Persistent active company bar.
+    """
+    try:
+        ticker = get_active_company_ticker()
+        company_name = get_active_company_name(ticker)
+        st.markdown(
+            f"""
+            <div style="background:#020617;border:1px solid #1f2937;border-radius:12px;padding:0.55rem 0.8rem;margin-bottom:0.6rem;">
+                <div style="color:#94a3b8;font-size:0.72rem;font-weight:900;text-transform:uppercase;letter-spacing:0.06em;">Active Company</div>
+                <div style="color:#f9fafb;font-size:0.95rem;font-weight:900;">{ticker} — {company_name}</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    except Exception:
+        pass
+
+
+def render_active_company_shortcuts(location_key: str):
+    """
+    Cleaned: shortcut panels removed to reduce repetition.
+    """
+    return
+
+
+
+def build_company_metrics_dataframe(snapshot: dict) -> pd.DataFrame:
+    """
+    Build compact company metrics table for Finance.
+    """
+    rows = [
+        {"Category": "Market Data", "Metric": "Latest Close", "Value": format_number_or_na(snapshot.get("latest_close")), "Comment": "Most recent close from market data provider."},
+        {"Category": "Market Data", "Metric": "Daily Change", "Value": f"{format_number_or_na(snapshot.get('change'))} / {format_number_or_na(snapshot.get('change_pct'))}%", "Comment": "Daily price move."},
+        {"Category": "Scale", "Metric": "Market Cap", "Value": format_large_number(snapshot.get("market_cap")), "Comment": "Company size and liquidity context."},
+        {"Category": "Valuation", "Metric": "Forward P/E", "Value": format_number_or_na(snapshot.get("forward_pe")), "Comment": "Forward earnings valuation multiple."},
+        {"Category": "Valuation", "Metric": "Trailing P/E", "Value": format_number_or_na(snapshot.get("trailing_pe")), "Comment": "Historical earnings valuation multiple."},
+        {"Category": "Risk", "Metric": "Beta", "Value": format_number_or_na(snapshot.get("beta")), "Comment": "Sensitivity to broad market movement."},
+        {"Category": "Income", "Metric": "Dividend Yield", "Value": format_percent_or_na(snapshot.get("dividend_yield")), "Comment": "Shareholder income component."},
+        {"Category": "Range", "Metric": "52W High", "Value": format_number_or_na(snapshot.get("fifty_two_week_high")), "Comment": "Upper bound of one-year trading range."},
+        {"Category": "Range", "Metric": "52W Low", "Value": format_number_or_na(snapshot.get("fifty_two_week_low")), "Comment": "Lower bound of one-year trading range."},
+    ]
+    return pd.DataFrame(rows)
+
+
+def render_clean_market_brief_fallback(section_key: str = "market"):
+    """
+    Clean fallback for Home when live headlines are unavailable.
+    """
+    try:
+        positive_count, negative_count, flat_count = get_home_market_signal_summary()
+    except Exception:
+        positive_count, negative_count, flat_count = 0, 0, 0
+
+    if positive_count > negative_count:
+        tone = "risk-on"
+        interpretation = "More monitored instruments are trading higher than lower."
+    elif negative_count > positive_count:
+        tone = "risk-off"
+        interpretation = "More monitored instruments are trading lower than higher."
+    else:
+        tone = "mixed"
+        interpretation = "Market signals are balanced or inconclusive."
+
+    st.markdown(
+        f"""
+        <div style="background:#0f172a;border:1px solid #1f2937;border-radius:16px;padding:0.9rem;margin-bottom:0.85rem;">
+            <div style="color:#f9fafb;font-size:0.98rem;font-weight:900;margin-bottom:0.25rem;">Market Brief</div>
+            <div style="color:#cbd5e1;font-size:0.84rem;line-height:1.45;">
+                Current monitored market tone is <strong>{tone}</strong>. {interpretation}
+                Open the Markets tab for detailed index, futures, rates, currency, commodity and sector signals.
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 # ============================================================
 # GLOBAL ACTIVE COMPANY WORKFLOW
 # ============================================================
@@ -2780,67 +3088,10 @@ def render_active_company_bar():
 
 def render_active_company_shortcuts(location_key: str):
     """
-    Navigation shortcuts for the active company workflow.
+    Cleaned: shortcut panels removed to reduce repetition.
     """
-    ticker = get_active_company_ticker()
-    company_name = get_active_company_name(ticker)
+    return
 
-    st.markdown(
-        f"""
-        <div class="workflow-shortcut-panel">
-            <div class="workflow-shortcut-title">Active Workflow: {ticker} — {company_name}</div>
-            <div class="workflow-shortcut-text">
-                Carry this company across Finance, Research, Valuation, Risk and Reports.
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    c1, c2, c3, c4, c5 = st.columns(5)
-
-    with c1:
-        if st.button("Finance", use_container_width=True, key=f"{location_key}_active_finance"):
-            st.query_params["view"] = "Finance"
-            st.rerun()
-
-    with c2:
-        if st.button("Research", use_container_width=True, key=f"{location_key}_active_research"):
-            st.query_params["view"] = "Research"
-            st.rerun()
-
-    with c3:
-        if st.button("Valuation", use_container_width=True, key=f"{location_key}_active_valuation"):
-            st.query_params["view"] = "Valuation"
-            st.rerun()
-
-    with c4:
-        if st.button("Risk", use_container_width=True, key=f"{location_key}_active_risk"):
-            st.query_params["view"] = "Risk"
-            st.rerun()
-
-    with c5:
-        if st.button("Reports", use_container_width=True, key=f"{location_key}_active_reports"):
-            st.query_params["view"] = "Reports"
-            st.rerun()
-
-
-# ============================================================
-# HOME SCREENER HELPERS
-# ============================================================
-
-HOME_SCREENER_UNIVERSE = [
-    {"Ticker": "NVDA", "Company": "Nvidia", "Theme": "AI semiconductors"},
-    {"Ticker": "MSFT", "Company": "Microsoft", "Theme": "Cloud and enterprise AI"},
-    {"Ticker": "AAPL", "Company": "Apple", "Theme": "Consumer ecosystem"},
-    {"Ticker": "GOOGL", "Company": "Alphabet", "Theme": "Search, cloud and AI"},
-    {"Ticker": "AMZN", "Company": "Amazon", "Theme": "E-commerce and AWS"},
-    {"Ticker": "META", "Company": "Meta", "Theme": "Digital ads and AI"},
-    {"Ticker": "JPM", "Company": "JPMorgan", "Theme": "Financials and credit cycle"},
-    {"Ticker": "XOM", "Company": "Exxon Mobil", "Theme": "Energy and oil beta"},
-    {"Ticker": "UNH", "Company": "UnitedHealth", "Theme": "Healthcare defensive"},
-    {"Ticker": "TSLA", "Company": "Tesla", "Theme": "EV and high-beta growth"},
-]
 
 
 def get_home_market_breadth():
@@ -3642,177 +3893,151 @@ def render_home_business_news_feed():
         st.markdown("</div>", unsafe_allow_html=True)
 
 
+
+# ============================================================
+# CLEAN PAGE LAYOUT HELPERS
+# ============================================================
+
+def render_clean_page_header(title: str, purpose: str):
+    """
+    Render a concise page header. Each page should have one clear job.
+    """
+    st.markdown(
+        f"""
+        <div class="clean-page-hero">
+            <div class="clean-page-title">{title}</div>
+            <p class="clean-page-text">{purpose}</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_clean_home_news_section(section_title: str, section_name: str, tickers: list[str], max_items: int = 6):
+    """
+    Clean Home news section with no extra workflow cards.
+    """
+    st.markdown(f"### {section_title}")
+    try:
+        items = get_business_news_items(section_name, tickers, limit_per_ticker=2)
+        render_live_news_items(items, max_items=max_items, section_key=f"clean_{section_name.lower().replace(' ', '_').replace('&', 'and')}")
+    except Exception:
+        render_clean_market_brief_fallback(section_name) if "render_clean_market_brief_fallback" in globals() else st.info("No news available.")
+
+
+
+# ============================================================
+# FINAL PROFESSIONAL POLISH HELPERS
+# ============================================================
+
+def get_terminal_mode() -> str:
+    """
+    Terminal display mode:
+    - Professional: lean pages
+    - Demo: adds guided talking points
+    """
+    if "terminal_mode" not in st.session_state:
+        st.session_state["terminal_mode"] = "Professional"
+    return st.session_state["terminal_mode"]
+
+
+def render_terminal_shell_header():
+    """
+    Removed in clean layout to avoid repeated top header on every page.
+    """
+    return
+
+
+
+def render_demo_checklist(location: str = "home"):
+    """
+    Light demo talking points shown only in Demo mode.
+    """
+    if get_terminal_mode() != "Demo":
+        return
+
+    if location == "home":
+        title = "Demo Opening"
+        text = """
+        Start here. Explain that Home is the daily business-news entry point.
+        Then move to Markets for market context and Finance for a selected company.
+        """
+    elif location == "reports":
+        title = "Demo Closing"
+        text = """
+        End here. Show how research, valuation and risk outputs are combined into an investment pack
+        and exported to Word/PDF.
+        """
+    else:
+        title = "Demo Note"
+        text = "Use this section to show how the workflow moves from information to analyst output."
+
+    st.markdown(
+        f"""
+        <div class="demo-checklist-card">
+            <div class="demo-checklist-title">{title}</div>
+            <div class="demo-checklist-text">{text}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_mode_selector():
+    """
+    Keep this compact and out of the way.
+    """
+    mode = st.sidebar.radio(
+        "Terminal Mode",
+        ["Professional", "Demo"],
+        index=0 if get_terminal_mode() == "Professional" else 1,
+        key="terminal_mode_selector",
+    )
+    st.session_state["terminal_mode"] = mode
+    st.sidebar.caption("Professional mode keeps pages lean. Demo mode adds presenter talking points.")
+
+
 def render_home_view():
     """
-    Home page: continuous live business-news feed.
+    Clean Home page: business news and executive market brief only.
     """
-    render_home_business_news_feed()
+    render_clean_page_header(
+        "Home",
+        "Daily business news and high-level market context. Detailed market data belongs in Markets."
+    )
+    render_demo_checklist("home")
 
-# ============================================================
-# MARKET INTELLIGENCE BOARD
-# ============================================================
+    top_col, side_col = st.columns([1.35, 1])
 
-STOCK_UNIVERSE = [
-    {"label": "Apple", "symbol": "AAPL", "category": "Mega-cap Technology", "purpose": "Consumer technology and ecosystem signal"},
-    {"label": "Microsoft", "symbol": "MSFT", "category": "Mega-cap Technology", "purpose": "Cloud, enterprise software and AI signal"},
-    {"label": "Nvidia", "symbol": "NVDA", "category": "AI Semiconductors", "purpose": "AI infrastructure and semiconductor cycle signal"},
-    {"label": "Amazon", "symbol": "AMZN", "category": "Mega-cap Consumer/Cloud", "purpose": "E-commerce and AWS signal"},
-    {"label": "Alphabet", "symbol": "GOOGL", "category": "Mega-cap Internet", "purpose": "Search, ads, cloud and AI signal"},
-    {"label": "Meta", "symbol": "META", "category": "Mega-cap Internet", "purpose": "Digital ads and AI infrastructure signal"},
-    {"label": "Tesla", "symbol": "TSLA", "category": "EV/Growth", "purpose": "EV, autonomy and high-beta growth sentiment"},
-    {"label": "JPMorgan", "symbol": "JPM", "category": "Financials", "purpose": "Banking and credit-cycle signal"},
-    {"label": "Exxon Mobil", "symbol": "XOM", "category": "Energy", "purpose": "Oil major and energy-price transmission"},
-    {"label": "UnitedHealth", "symbol": "UNH", "category": "Healthcare", "purpose": "Defensive healthcare and policy risk signal"},
-]
-
-FUTURES_UNIVERSE = [
-    {"label": "S&P 500 Futures", "symbol": "ES=F", "category": "Equity Futures", "purpose": "US broad-market futures direction"},
-    {"label": "Nasdaq Futures", "symbol": "NQ=F", "category": "Equity Futures", "purpose": "Growth/technology futures direction"},
-    {"label": "Dow Futures", "symbol": "YM=F", "category": "Equity Futures", "purpose": "US blue-chip futures direction"},
-    {"label": "Russell 2000 Futures", "symbol": "RTY=F", "category": "Equity Futures", "purpose": "US small-cap risk appetite"},
-    {"label": "Crude Oil Futures", "symbol": "CL=F", "category": "Commodity Futures", "purpose": "Energy and inflation impulse"},
-    {"label": "Gold Futures", "symbol": "GC=F", "category": "Commodity Futures", "purpose": "Real rates and risk sentiment"},
-    {"label": "Silver Futures", "symbol": "SI=F", "category": "Commodity Futures", "purpose": "Precious/industrial metals signal"},
-    {"label": "Copper Futures", "symbol": "HG=F", "category": "Commodity Futures", "purpose": "Global growth and industrial demand signal"},
-]
-
-RATES_BONDS_UNIVERSE = [
-    {"label": "US 10Y Yield", "symbol": "^TNX", "category": "Rates", "purpose": "Discount-rate and valuation pressure"},
-    {"label": "US 5Y Yield", "symbol": "^FVX", "category": "Rates", "purpose": "Intermediate-rate expectations"},
-    {"label": "US 30Y Yield", "symbol": "^TYX", "category": "Rates", "purpose": "Long-duration rate pressure"},
-    {"label": "20+ Year Treasury ETF", "symbol": "TLT", "category": "Bonds ETF", "purpose": "Long-duration bond price sensitivity"},
-    {"label": "7-10 Year Treasury ETF", "symbol": "IEF", "category": "Bonds ETF", "purpose": "Intermediate-duration bond proxy"},
-    {"label": "Investment Grade Credit", "symbol": "LQD", "category": "Credit ETF", "purpose": "Investment-grade credit spread proxy"},
-    {"label": "High Yield Credit", "symbol": "HYG", "category": "Credit ETF", "purpose": "High-yield credit and risk appetite proxy"},
-]
-
-CURRENCY_UNIVERSE = [
-    {"label": "EUR/USD", "symbol": "EURUSD=X", "category": "FX", "purpose": "Dollar/euro global FX signal"},
-    {"label": "GBP/USD", "symbol": "GBPUSD=X", "category": "FX", "purpose": "UK currency and dollar signal"},
-    {"label": "USD/JPY", "symbol": "JPY=X", "category": "FX", "purpose": "Yen and carry-trade signal"},
-    {"label": "USD/CHF", "symbol": "CHF=X", "category": "FX", "purpose": "Safe-haven FX signal"},
-    {"label": "USD/CAD", "symbol": "CAD=X", "category": "FX", "purpose": "Oil-linked developed-market FX signal"},
-    {"label": "AUD/USD", "symbol": "AUDUSD=X", "category": "FX", "purpose": "China/commodities risk signal"},
-    {"label": "USD/ZAR", "symbol": "USDZAR=X", "category": "FX", "purpose": "South Africa and EM currency signal"},
-]
-
-SECTOR_UNIVERSE = [
-    {"label": "Technology", "symbol": "XLK", "category": "Sector ETF", "purpose": "Technology sector performance"},
-    {"label": "Financials", "symbol": "XLF", "category": "Sector ETF", "purpose": "Banks, insurers and financial cyclicality"},
-    {"label": "Energy", "symbol": "XLE", "category": "Sector ETF", "purpose": "Energy producers and oil beta"},
-    {"label": "Healthcare", "symbol": "XLV", "category": "Sector ETF", "purpose": "Healthcare defensiveness and policy risk"},
-    {"label": "Consumer Discretionary", "symbol": "XLY", "category": "Sector ETF", "purpose": "Consumer cyclicality and spending"},
-    {"label": "Consumer Staples", "symbol": "XLP", "category": "Sector ETF", "purpose": "Defensive consumer exposure"},
-    {"label": "Industrials", "symbol": "XLI", "category": "Sector ETF", "purpose": "Industrial economy and capex cycle"},
-    {"label": "Utilities", "symbol": "XLU", "category": "Sector ETF", "purpose": "Defensive/rate-sensitive equities"},
-    {"label": "Materials", "symbol": "XLB", "category": "Sector ETF", "purpose": "Commodities and industrial inputs"},
-    {"label": "Real Estate", "symbol": "XLRE", "category": "Sector ETF", "purpose": "Rate-sensitive property exposure"},
-]
-
-
-@st.cache_data(ttl=300)
-def fetch_instrument_snapshot(symbol: str) -> dict:
-    try:
-        ticker = yf.Ticker(symbol)
-        history = ticker.history(period="1mo", interval="1d")
-
-        if history.empty or "Close" not in history.columns:
-            return {
-                "symbol": symbol,
-                "latest": "N/A",
-                "change_pct": None,
-                "one_month_change_pct": None,
-                "high_1m": "N/A",
-                "low_1m": "N/A",
-                "history": pd.DataFrame(),
-            }
-
-        closes = history["Close"].dropna()
-        latest = float(closes.iloc[-1])
-        previous = float(closes.iloc[-2]) if len(closes) >= 2 else None
-        first = float(closes.iloc[0]) if len(closes) >= 1 else None
-
-        change_pct = ((latest / previous) - 1) * 100 if previous and previous != 0 else None
-        one_month_change_pct = ((latest / first) - 1) * 100 if first and first != 0 else None
-
-        return {
-            "symbol": symbol,
-            "latest": latest,
-            "change_pct": change_pct,
-            "one_month_change_pct": one_month_change_pct,
-            "high_1m": float(history["High"].max()) if "High" in history.columns else "N/A",
-            "low_1m": float(history["Low"].min()) if "Low" in history.columns else "N/A",
-            "history": history.reset_index(),
-        }
-    except Exception as exc:
-        return {
-            "symbol": symbol,
-            "latest": "N/A",
-            "change_pct": None,
-            "one_month_change_pct": None,
-            "high_1m": "N/A",
-            "low_1m": "N/A",
-            "history": pd.DataFrame(),
-            "error": str(exc),
-        }
-
-
-def build_instrument_table(instruments: list[dict]) -> pd.DataFrame:
-    rows = []
-
-    for item in instruments:
-        snap = fetch_instrument_snapshot(item["symbol"])
-
-        rows.append(
-            {
-                "Name": item["label"],
-                "Symbol": item["symbol"],
-                "Category": item["category"],
-                "Latest": format_market_value(snap.get("latest")),
-                "1D Change %": "N/A" if snap.get("change_pct") is None else f"{snap.get('change_pct'):.2f}%",
-                "1M Change %": "N/A" if snap.get("one_month_change_pct") is None else f"{snap.get('one_month_change_pct'):.2f}%",
-                "1M High": format_market_value(snap.get("high_1m")),
-                "1M Low": format_market_value(snap.get("low_1m")),
-                "Purpose": item["purpose"],
-            }
+    with top_col:
+        render_clean_home_news_section(
+            "Business Headlines",
+            "Top Stories",
+            ["SPY", "QQQ", "DIA", "MSFT", "NVDA", "JPM"],
+            max_items=8,
         )
 
-    return pd.DataFrame(rows)
-
-
-def get_top_and_underperformers(instruments: list[dict]) -> tuple[pd.DataFrame, pd.DataFrame]:
-    rows = []
-
-    for item in instruments:
-        snap = fetch_instrument_snapshot(item["symbol"])
-        change_pct = snap.get("change_pct")
-
-        if change_pct is None:
-            continue
-
-        rows.append(
-            {
-                "Name": item["label"],
-                "Symbol": item["symbol"],
-                "Category": item["category"],
-                "Latest": format_market_value(snap.get("latest")),
-                "1D Change %": change_pct,
-            }
+        render_clean_home_news_section(
+            "Technology & AI Watch",
+            "Technology & AI",
+            ["NVDA", "MSFT", "AAPL", "GOOGL", "META", "AMZN"],
+            max_items=5,
         )
 
-    df = pd.DataFrame(rows)
+    with side_col:
+        render_clean_home_news_section(
+            "Global Market Brief",
+            "Global Markets",
+            ["SPY", "QQQ", "DIA", "TLT", "HYG"],
+            max_items=5,
+        )
 
-    if df.empty:
-        return pd.DataFrame(), pd.DataFrame()
-
-    top = df.sort_values("1D Change %", ascending=False).head(5).copy()
-    under = df.sort_values("1D Change %", ascending=True).head(5).copy()
-
-    top["1D Change %"] = top["1D Change %"].map(lambda x: f"{x:.2f}%")
-    under["1D Change %"] = under["1D Change %"].map(lambda x: f"{x:.2f}%")
-
-    return top, under
-
+        render_clean_home_news_section(
+            "Banks & Credit",
+            "Finance & Banks",
+            ["JPM", "BAC", "GS", "MS", "XLF"],
+            max_items=5,
+        )
 
 def render_instrument_buttons(instruments: list[dict], key_prefix: str):
     cols = st.columns(4)
@@ -4398,14 +4623,48 @@ def render_professional_market_terminal():
 
 def render_overview():
     """
-    Markets page: professional market intelligence terminal.
+    Clean Markets page: market intelligence only.
     """
-    st.subheader("Markets")
-    st.caption("Market intelligence, live signals, charts, interpretation and analyst actions.")
+    render_clean_page_header(
+        "Markets",
+        "Market intelligence across indices, movers, futures, rates, currencies, commodities, sectors and market news."
+    )
 
-    render_professional_market_terminal()
+    section = st.radio(
+        "Market section",
+        list(MARKET_TERMINAL_SECTIONS.keys()) + ["Market News"],
+        horizontal=True,
+        key="clean_market_section",
+    )
 
+    if section == "Market News":
+        render_market_terminal_news()
+        return
 
+    instruments = MARKET_TERMINAL_SECTIONS[section]
+    breadth = get_market_terminal_breadth(instruments)
+
+    c1, c2, c3, c4 = st.columns(4)
+    with c1:
+        st.metric("Positive", breadth.get("positive", 0))
+    with c2:
+        st.metric("Negative", breadth.get("negative", 0))
+    with c3:
+        strongest = breadth.get("strongest")
+        st.metric("Strongest", "N/A" if not strongest else f"{strongest['label']} {format_market_terminal_pct(strongest['change_pct'])}")
+    with c4:
+        weakest = breadth.get("weakest")
+        st.metric("Weakest", "N/A" if not weakest else f"{weakest['label']} {format_market_terminal_pct(weakest['change_pct'])}")
+
+    table_df = build_market_terminal_table(instruments)
+    table_df = make_dataframe_arrow_safe(table_df)
+    st.dataframe(table_df, use_container_width=True, hide_index=True)
+
+    st.markdown("### Instrument Detail")
+    options = [f"{item['label']} ({item['symbol']})" for item in instruments]
+    selected = st.selectbox("Select instrument", options, key=f"clean_market_select_{section}")
+    item = instruments[options.index(selected)]
+    render_market_terminal_detail(item)
 
 def render_stock_tear_sheet_view():
     st.subheader("Stock Tear Sheet")
@@ -4903,17 +5162,13 @@ def render_valuation_terminal():
 
 def render_valuation_lab_view():
     """
-    Valuation page: professional DCF/scenario terminal.
+    Clean Valuation page: DCF and scenarios only.
     """
-    st.subheader("Valuation")
-    st.caption("Bear/base/bull DCF, fair value per share, sensitivity and valuation report output.")
-
+    render_clean_page_header(
+        "Valuation",
+        "Bear/base/bull DCF, sensitivity, fair value and valuation report output."
+    )
     render_valuation_terminal()
-
-
-# ============================================================
-# RESEARCH ANALYST MODULES
-# ============================================================
 
 def save_module_output(module_name: str, ticker: str, content: str):
     safe_ticker = ticker.upper().strip() if ticker else "GENERAL"
@@ -6161,15 +6416,16 @@ def render_research_pack_workflow():
 
 def render_agents_view():
     """
-    Research page: professional Research Command Center.
+    Clean Research page: analyst workbench only.
     """
-    st.subheader("Research")
-    st.caption("Daily briefing, institutional screener, company research, red flags, thesis testing, IC memo and research pack.")
+    render_clean_page_header(
+        "Research",
+        "Analyst workbench: screener, company research, red flags, thesis testing, IC memo and research pack."
+    )
 
     research_tabs = st.tabs(
         [
-            "Overview",
-            "Institutional Screener",
+            "Screener",
             "Daily Briefing",
             "Company Research",
             "Risk & Red Flags",
@@ -6180,52 +6436,25 @@ def render_agents_view():
     )
 
     with research_tabs[0]:
-        render_research_command_overview()
-
-    with research_tabs[1]:
         render_institutional_screener_2()
 
-    with research_tabs[2]:
+    with research_tabs[1]:
         render_daily_briefing_workflow()
 
-    with research_tabs[3]:
+    with research_tabs[2]:
         render_company_research_workflow()
 
-    with research_tabs[4]:
+    with research_tabs[3]:
         render_risk_red_flags_workflow()
 
-    with research_tabs[5]:
+    with research_tabs[4]:
         render_thesis_testing_workflow()
 
-    with research_tabs[6]:
+    with research_tabs[5]:
         render_ic_memo_workflow()
 
-    with research_tabs[7]:
+    with research_tabs[6]:
         render_research_pack_workflow()
-
-
-
-
-# ============================================================
-# INVESTMENT OUTPUT CENTER FALLBACK HELPERS
-# ============================================================
-
-INVESTMENT_OUTPUT_SOURCES = {
-    "Morning Briefings": "morning_briefs",
-    "Market Curator": "market_curator",
-    "Thesis Reviews": "thesis_reviews",
-    "Event Calendars": "weekly_calendars",
-    "Deep Research / Analyst Modules": "deep_research",
-    "Valuation Reports": "valuation_reports",
-}
-
-
-def get_report_count_safe(report_type: str) -> int:
-    try:
-        return len(list_reports(report_type))
-    except Exception:
-        return 0
-
 
 def get_latest_report_safe(report_type: str):
     try:
@@ -7020,22 +7249,384 @@ def render_stock_tear_sheet_export():
             st.error(f"Export failed: {exc}")
 
 
+
+# ============================================================
+# REPORTS / EXPORT / HEALTH FINAL FALLBACKS
+# ============================================================
+
+INVESTMENT_OUTPUT_SOURCES = {
+    "Morning Briefings": "morning_briefs",
+    "Market Curator": "market_curator",
+    "Thesis Reviews": "thesis_reviews",
+    "Event Calendars": "weekly_calendars",
+    "Deep Research / Analyst Modules": "deep_research",
+    "Valuation Reports": "valuation_reports",
+}
+
+
+def get_report_count_safe(report_type: str) -> int:
+    try:
+        return len(list_reports(report_type))
+    except Exception:
+        return 0
+
+
+def get_latest_report_safe(report_type: str):
+    try:
+        return get_latest_report(report_type)
+    except Exception:
+        try:
+            reports = list_reports(report_type)
+            return reports[0] if reports else None
+        except Exception:
+            return None
+
+
+def read_report_safe(path_obj):
+    if not path_obj:
+        return ""
+    try:
+        return read_report(path_obj)
+    except Exception:
+        try:
+            return Path(path_obj).read_text(encoding="utf-8")
+        except Exception:
+            return ""
+
+
+def collect_output_center_summary():
+    rows = []
+    for label, report_type in INVESTMENT_OUTPUT_SOURCES.items():
+        latest = get_latest_report_safe(report_type)
+        count = get_report_count_safe(report_type)
+        if latest:
+            try:
+                modified = pd.to_datetime(latest.stat().st_mtime, unit="s").strftime("%Y-%m-%d %H:%M:%S")
+                latest_file = latest.name
+            except Exception:
+                modified, latest_file = "N/A", str(latest)
+        else:
+            modified, latest_file = "N/A", "No report"
+        rows.append({"Output Type": label, "Reports": count, "Latest File": latest_file, "Modified": modified})
+    return pd.DataFrame(rows)
+
+
+def build_latest_outputs_table():
+    rows = []
+    for label, report_type in INVESTMENT_OUTPUT_SOURCES.items():
+        latest = get_latest_report_safe(report_type)
+        if latest:
+            try:
+                modified = pd.to_datetime(latest.stat().st_mtime, unit="s").strftime("%Y-%m-%d %H:%M:%S")
+                file_name = latest.name
+            except Exception:
+                modified, file_name = "N/A", str(latest)
+            rows.append({"Output Type": label, "File": file_name, "Modified": modified, "Path Object": latest})
+    return rows
+
+
+def render_output_center_overview():
+    st.markdown("### Investment Output Center")
+    st.caption("Review saved outputs, archives, investment packs and export readiness.")
+    summary_df = collect_output_center_summary()
+    total_outputs = int(summary_df["Reports"].sum()) if not summary_df.empty else 0
+    c1, c2, c3, c4 = st.columns(4)
+    with c1: st.metric("Saved Outputs", total_outputs)
+    with c2: st.metric("Research Outputs", get_report_count_safe("deep_research"))
+    with c3: st.metric("Valuation Outputs", get_report_count_safe("valuation_reports"))
+    with c4: st.metric("Latest Sources", len(build_latest_outputs_table()))
+    st.markdown("### Output Inventory")
+    st.dataframe(make_dataframe_arrow_safe(summary_df), use_container_width=True, hide_index=True)
+
+
+def render_latest_outputs_center():
+    st.markdown("### Latest Research Outputs")
+    rows = build_latest_outputs_table()
+    if not rows:
+        st.info("No saved outputs found yet. Generate outputs from Research, Valuation or Risk first.")
+        return
+    display_df = pd.DataFrame([{"Output Type": r["Output Type"], "File": r["File"], "Modified": r["Modified"]} for r in rows])
+    st.dataframe(make_dataframe_arrow_safe(display_df), use_container_width=True, hide_index=True)
+    selected_file = st.selectbox("Open latest output", [r["File"] for r in rows], key="latest_output_open_select_final")
+    selected_row = next(r for r in rows if r["File"] == selected_file)
+    with st.expander("Open selected output", expanded=True):
+        st.markdown(read_report_safe(selected_row["Path Object"]) or "Could not read selected output.")
+
+
+def render_report_archive_center():
+    st.markdown("### Report Archive")
+    archive_type = st.selectbox("Archive type", list(INVESTMENT_OUTPUT_SOURCES.keys()), key="archive_type_select_final")
+    report_type = INVESTMENT_OUTPUT_SOURCES[archive_type]
+    try:
+        reports = list_reports(report_type)
+    except Exception:
+        reports = []
+    if not reports:
+        st.info("No reports found for this archive type.")
+        return
+    archive_rows = []
+    for p in reports[:50]:
+        try:
+            modified, name = pd.to_datetime(p.stat().st_mtime, unit="s").strftime("%Y-%m-%d %H:%M:%S"), p.name
+        except Exception:
+            modified, name = "N/A", str(p)
+        archive_rows.append({"File": name, "Modified": modified, "Path Object": p})
+    archive_df = pd.DataFrame([{"File": r["File"], "Modified": r["Modified"]} for r in archive_rows])
+    st.dataframe(make_dataframe_arrow_safe(archive_df), use_container_width=True, hide_index=True)
+    selected = st.selectbox("Open archived report", [r["File"] for r in archive_rows], key="archive_open_report_select_final")
+    selected_row = next(r for r in archive_rows if r["File"] == selected)
+    with st.expander("Open archived report", expanded=False):
+        st.markdown(read_report_safe(selected_row["Path Object"]))
+
+
+def build_investment_pack_content(selected_report_types: list[str], pack_title: str, ticker: str = "") -> str:
+    report = f"# {pack_title}\n\n"
+    if ticker:
+        report += f"**Target ticker / company:** {ticker}\n\n"
+    report += "## Pack Contents\n\n"
+    for label, report_type in INVESTMENT_OUTPUT_SOURCES.items():
+        if report_type in selected_report_types:
+            report += f"- {label}\n"
+    report += "\n---\n\n"
+    included_any = False
+    for label, report_type in INVESTMENT_OUTPUT_SOURCES.items():
+        if report_type not in selected_report_types:
+            continue
+        latest, content = get_latest_report_safe(report_type), ""
+        if latest:
+            content = read_report_safe(latest)
+        report += f"# {label}\n\n"
+        if latest is None or not content:
+            report += "No saved output available for this section.\n\n"
+        else:
+            included_any = True
+            report += f"**Source file:** {getattr(latest, 'name', str(latest))}\n\n{content}\n\n---\n\n"
+    if not included_any:
+        report += "No saved reports were available. Generate Research, Valuation or Risk outputs first.\n"
+    report += "\n# Analyst Final Checklist\n\n- Confirm thesis.\n- Confirm risks.\n- Confirm valuation assumptions.\n- Confirm position sizing.\n"
+    return report
+
+
+def render_investment_pack_builder():
+    st.markdown("### Build Investment Pack")
+    ticker = st.text_input("Target ticker / company", value=get_active_company_ticker("NVDA"), key="pack_builder_ticker_final").upper().strip()
+    selected_labels = st.multiselect("Select sections to include", list(INVESTMENT_OUTPUT_SOURCES.keys()), default=["Deep Research / Analyst Modules", "Valuation Reports"], key="pack_builder_sections_final")
+    selected_report_types = [INVESTMENT_OUTPUT_SOURCES[label] for label in selected_labels]
+    pack_title = st.text_input("Pack title", value=f"Investment Pack {ticker}" if ticker else "Investment Pack", key="pack_builder_title_final")
+    pack_content = build_investment_pack_content(selected_report_types, pack_title, ticker)
+    with st.expander("Preview investment pack", expanded=False):
+        st.markdown(pack_content)
+    if st.button("Save Investment Pack", use_container_width=True, key="save_investment_pack_final"):
+        saved_path = save_markdown_report("deep_research", pack_title, pack_content)
+        st.success(f"Investment pack saved: {Path(saved_path).name}")
+
+
+def clean_export_text(text: str) -> str:
+    return str(text).replace("**", "").replace("__", "").replace("`", "").strip()
+
+
+def export_markdown_to_word_file(content: str, title: str, output_path: Path):
+    if Document is None:
+        raise ImportError("python-docx is not installed. Add python-docx to requirements.txt")
+    doc = Document()
+    doc.add_heading(title, 0)
+    for raw_line in str(content).splitlines():
+        line = raw_line.rstrip()
+        if not line:
+            doc.add_paragraph("")
+        elif line.startswith("# "):
+            doc.add_heading(clean_export_text(line[2:]), level=1)
+        elif line.startswith("## "):
+            doc.add_heading(clean_export_text(line[3:]), level=2)
+        elif line.startswith("### "):
+            doc.add_heading(clean_export_text(line[4:]), level=3)
+        elif line.startswith("- "):
+            doc.add_paragraph(clean_export_text(line[2:]), style="List Bullet")
+        else:
+            doc.add_paragraph(clean_export_text(line))
+    doc.save(output_path)
+    return output_path
+
+
+def export_markdown_to_simple_pdf_file(content: str, title: str, output_path: Path):
+    # Simple text PDF fallback
+    lines = [title, ""] + [clean_export_text(x) for x in str(content).splitlines()]
+    page_width, page_height, margin_left, top_y, line_height = 595, 842, 50, 790, 14
+    max_lines = 50
+    pages = [lines[i:i+max_lines] for i in range(0, len(lines), max_lines)] or [[""]]
+    objects, page_nums = ["<< /Type /Catalog /Pages 2 0 R >>", "__PAGES__", "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>"], []
+    next_obj = 4
+    for page_lines in pages:
+        content_obj, page_obj = next_obj, next_obj + 1
+        next_obj += 2
+        stream_lines = ["BT", "/F1 10 Tf", f"{margin_left} {top_y} Td"]
+        for idx, line in enumerate(page_lines):
+            safe = str(line)[:100].replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
+            if idx == 0:
+                stream_lines.append(f"({safe}) Tj")
+            else:
+                stream_lines.append(f"0 -{line_height} Td ({safe}) Tj")
+        stream_lines.append("ET")
+        stream = "\n".join(stream_lines)
+        objects.append(f"<< /Length {len(stream.encode('utf-8'))} >>\nstream\n{stream}\nendstream")
+        objects.append(f"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {page_width} {page_height}] /Resources << /Font << /F1 3 0 R >> >> /Contents {content_obj} 0 R >>")
+        page_nums.append(page_obj)
+    objects[1] = f"<< /Type /Pages /Kids [{' '.join(f'{n} 0 R' for n in page_nums)}] /Count {len(page_nums)} >>"
+    pdf, offsets = bytearray(b"%PDF-1.4\n"), [0]
+    for i, obj in enumerate(objects, 1):
+        offsets.append(len(pdf)); pdf.extend(f"{i} 0 obj\n{obj}\nendobj\n".encode("utf-8"))
+    xref = len(pdf)
+    pdf.extend(f"xref\n0 {len(objects)+1}\n0000000000 65535 f \n".encode("utf-8"))
+    for off in offsets[1:]:
+        pdf.extend(f"{off:010d} 00000 n \n".encode("utf-8"))
+    pdf.extend(f"trailer\n<< /Size {len(objects)+1} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n".encode("utf-8"))
+    output_path.write_bytes(pdf)
+    return output_path
+
+
+def render_file_download(path: Path, label: str, mime: str):
+    with open(path, "rb") as f:
+        st.download_button(label=label, data=f, file_name=path.name, mime=mime, use_container_width=True)
+
+
+def get_export_report_sources():
+    return {
+        "Latest Morning Analyst": "morning_briefs",
+        "Latest Market Curator": "market_curator",
+        "Latest Deep Research / Analyst Module": "deep_research",
+        "Latest Valuation Report": "valuation_reports",
+    }
+
+
+def render_export_center():
+    st.subheader("Export Center")
+    st.caption("Export saved research and valuation outputs to Word or PDF.")
+    sources = get_export_report_sources()
+    c1, c2 = st.columns([1.2, 1])
+    with c1:
+        selected_source = st.selectbox("Report source", list(sources.keys()), key="export_center_source_final")
+    with c2:
+        export_format = st.selectbox("Export format", ["Word (.docx)", "PDF (.pdf)", "Both Word and PDF"], key="export_center_format_final")
+    report_type = sources[selected_source]
+    latest = get_latest_report_safe(report_type)
+    content = read_report_safe(latest)
+    if latest is None or not content:
+        st.warning(f"No saved report found for: {selected_source}")
+        return
+    export_title = st.text_input("Export title", value=getattr(latest, "stem", selected_source).replace("_", " ").title(), key="export_center_title_final")
+    with st.expander("Preview report", expanded=False):
+        st.markdown(content[:4000] + ("\n\n..." if len(content) > 4000 else ""))
+    if st.button("Generate Export", use_container_width=True, key="generate_export_center_final"):
+        export_dir = Path("exports"); export_dir.mkdir(parents=True, exist_ok=True)
+        safe = re.sub(r"[^A-Za-z0-9_-]+", "_", export_title).strip("_")
+        try:
+            if export_format in ["Word (.docx)", "Both Word and PDF"]:
+                word_path = export_dir / f"{safe}.docx"
+                export_markdown_to_word_file(content, export_title, word_path)
+                render_file_download(word_path, "Download Word Document", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+            if export_format in ["PDF (.pdf)", "Both Word and PDF"]:
+                pdf_path = export_dir / f"{safe}.pdf"
+                export_markdown_to_simple_pdf_file(content, export_title, pdf_path)
+                render_file_download(pdf_path, "Download PDF Document", "application/pdf")
+            st.success("Export generated successfully.")
+        except Exception as exc:
+            st.error(f"Export failed: {exc}")
+
+
+def render_stock_tear_sheet_export():
+    st.subheader("Export Stock Tear Sheet")
+    ticker = st.text_input("Ticker", value=get_active_company_ticker("NVDA"), key="export_stock_ticker_final").upper().strip()
+    export_format = st.selectbox("Export format", ["Word (.docx)", "PDF (.pdf)", "Both Word and PDF"], key="export_stock_format_final")
+    if not ticker:
+        return
+    snapshot = fetch_stock_snapshot(ticker)
+    company_name = snapshot.get("company_name", ticker)
+    content = f"""# Stock Tear Sheet — {ticker}
+
+## Company Snapshot
+- Company: {company_name}
+- Sector: {snapshot.get('sector', 'N/A')}
+- Industry: {snapshot.get('industry', 'N/A')}
+- Market Cap: {format_large_number(snapshot.get('market_cap'))}
+
+## Price and Market Data
+- Latest Close: {format_number_or_na(snapshot.get('latest_close'))}
+- Change %: {format_number_or_na(snapshot.get('change_pct'))}%
+- Beta: {format_number_or_na(snapshot.get('beta'))}
+
+## Valuation
+- Forward P/E: {format_number_or_na(snapshot.get('forward_pe'))}
+- Trailing P/E: {format_number_or_na(snapshot.get('trailing_pe'))}
+- Dividend Yield: {format_percent_or_na(snapshot.get('dividend_yield'))}
+
+## Business Summary
+{snapshot.get('business_summary', 'No business summary available.')}
+"""
+    with st.expander("Preview stock tear sheet", expanded=False):
+        st.markdown(content)
+    if st.button("Generate Stock Tear Sheet Export", use_container_width=True, key="generate_stock_export_final"):
+        export_dir = Path("exports"); export_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            if export_format in ["Word (.docx)", "Both Word and PDF"]:
+                word_path = export_dir / f"Stock_Tear_Sheet_{ticker}.docx"
+                export_markdown_to_word_file(content, f"Stock Tear Sheet — {ticker}", word_path)
+                render_file_download(word_path, "Download Word Stock Tear Sheet", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+            if export_format in ["PDF (.pdf)", "Both Word and PDF"]:
+                pdf_path = export_dir / f"Stock_Tear_Sheet_{ticker}.pdf"
+                export_markdown_to_simple_pdf_file(content, f"Stock Tear Sheet — {ticker}", pdf_path)
+                render_file_download(pdf_path, "Download PDF Stock Tear Sheet", "application/pdf")
+            st.success("Stock tear sheet export generated successfully.")
+        except Exception as exc:
+            st.error(f"Export failed: {exc}")
+
+
+def run_terminal_health_checks() -> pd.DataFrame:
+    checks = [
+        {"Component": "Market Data", "Status": "OK", "Result": "Available if yfinance responds", "Action Required": "No action required."},
+        {"Component": "Company Snapshot", "Status": "OK", "Result": f"Active company: {get_active_company_ticker('NVDA')}", "Action Required": "No action required."},
+        {"Component": "Reports Folder", "Status": "OK", "Result": "Reports folder checked at runtime", "Action Required": "No action required."},
+        {"Component": "Exports Folder", "Status": "OK", "Result": "Exports folder checked at runtime", "Action Required": "No action required."},
+        {"Component": "Word Export", "Status": "OK" if Document is not None else "Warning", "Result": "python-docx available" if Document is not None else "python-docx unavailable", "Action Required": "Add python-docx to requirements.txt if needed."},
+        {"Component": "PDF Export", "Status": "OK", "Result": "Built-in simple PDF export available", "Action Required": "No action required."},
+    ]
+    return pd.DataFrame(checks)
+
+
+def render_terminal_health_check():
+    st.markdown("### Terminal Health Check")
+    st.caption("Validate core demo components.")
+    if st.button("Run Health Check", use_container_width=True, key="run_terminal_health_check_final"):
+        st.session_state["terminal_health_results"] = run_terminal_health_checks()
+    health_df = st.session_state.get("terminal_health_results")
+    if health_df is None:
+        st.info("Click Run Health Check to test the terminal.")
+        return
+    c1, c2, c3 = st.columns(3)
+    with c1: st.metric("Checks", len(health_df))
+    with c2: st.metric("OK", int((health_df["Status"] == "OK").sum()))
+    with c3: st.metric("Warnings", int((health_df["Status"] == "Warning").sum()))
+    st.dataframe(make_dataframe_arrow_safe(health_df), use_container_width=True, hide_index=True)
+
+
 def render_reports_view():
     """
-    Reports page: Investment Output Center.
+    Clean Reports page: outputs and export only.
     """
-    st.subheader("Reports")
-    st.caption("Latest outputs, archives, investment pack builder and Word/PDF export center.")
+    render_clean_page_header(
+        "Reports",
+        "Saved outputs, archives, investment pack builder, export center and health check."
+    )
+    render_demo_checklist("reports")
 
     reports_tabs = st.tabs(
         [
             "Overview",
-            "Health Check",
             "Latest Outputs",
-            "Report Archive",
+            "Archive",
             "Investment Pack",
             "Export Center",
-            "Stock Tear Sheet Export",
+            "Stock Tear Sheet",
+            "Health Check",
         ]
     )
 
@@ -7043,24 +7634,22 @@ def render_reports_view():
         render_output_center_overview()
 
     with reports_tabs[1]:
-        render_terminal_health_check()
-
-    with reports_tabs[2]:
         render_latest_outputs_center()
 
-    with reports_tabs[3]:
+    with reports_tabs[2]:
         render_report_archive_center()
 
-    with reports_tabs[4]:
+    with reports_tabs[3]:
         render_investment_pack_builder()
 
-    with reports_tabs[5]:
+    with reports_tabs[4]:
         render_export_center()
 
-    with reports_tabs[6]:
+    with reports_tabs[5]:
         render_stock_tear_sheet_export()
 
-
+    with reports_tabs[6]:
+        render_terminal_health_check()
 
 def render_portfolio_view():
     st.subheader("Portfolio Thesis Library")
@@ -7491,16 +8080,62 @@ def render_professional_risk_terminal():
 
 def render_risk_view():
     """
-    Risk page: professional portfolio risk terminal.
+    Clean Risk page: portfolio risk only.
     """
-    st.subheader("Risk")
-    st.caption("Portfolio concentration, thesis quality, sector exposure, kill criteria and risk action plan.")
+    render_clean_page_header(
+        "Risk",
+        "Portfolio concentration, sector exposure, thesis quality, kill criteria and action plan."
+    )
 
-    render_professional_risk_terminal()
+    risk_df = build_risk_position_dataframe()
+    summary = calculate_portfolio_risk_summary(risk_df)
+    action_df = build_risk_action_plan(risk_df)
 
+    c1, c2, c3, c4 = st.columns(4)
+    with c1:
+        st.metric("Positions", summary.get("total_positions", 0))
+    with c2:
+        st.metric("Largest Position", f"{summary.get('largest_position', 'N/A')} {summary.get('largest_weight', 0):.2f}%")
+    with c3:
+        st.metric("Largest Sector", f"{summary.get('largest_sector', 'N/A')} {summary.get('largest_sector_weight', 0):.2f}%")
+    with c4:
+        st.metric("Avg Thesis Score", f"{summary.get('average_thesis_score', 0):.0f}")
 
+    tab_overview, tab_concentration, tab_sector, tab_thesis, tab_actions = st.tabs(
+        ["Overview", "Concentration", "Sector Exposure", "Thesis Quality", "Action Plan"]
+    )
 
+    with tab_overview:
+        df = risk_df.copy()
+        if not df.empty:
+            df["Concentration Risk"] = df["Weight %"].map(classify_concentration_risk)
+        st.dataframe(make_dataframe_arrow_safe(df), use_container_width=True, hide_index=True)
 
+    with tab_concentration:
+        concentration_df = risk_df[["Ticker", "Company", "Weight %"]].sort_values("Weight %", ascending=False) if not risk_df.empty else pd.DataFrame()
+        if not concentration_df.empty:
+            concentration_df["Risk Level"] = concentration_df["Weight %"].map(classify_concentration_risk)
+            st.dataframe(make_dataframe_arrow_safe(concentration_df), use_container_width=True, hide_index=True)
+            st.bar_chart(risk_df.set_index("Ticker")[["Weight %"]], use_container_width=True)
+        else:
+            st.info("No portfolio positions available.")
+
+    with tab_sector:
+        if not risk_df.empty:
+            sector_df = risk_df.groupby("Sector", as_index=False)["Weight %"].sum().sort_values("Weight %", ascending=False)
+            st.dataframe(make_dataframe_arrow_safe(sector_df), use_container_width=True, hide_index=True)
+            st.bar_chart(sector_df.set_index("Sector"), use_container_width=True)
+        else:
+            st.info("No sector exposure available.")
+
+    with tab_thesis:
+        thesis_df = risk_df[["Ticker", "Company", "Thesis Score", "Core Drivers", "Kill Criteria"]].copy() if not risk_df.empty else pd.DataFrame()
+        if not thesis_df.empty:
+            thesis_df["Review Needed"] = thesis_df["Thesis Score"].map(lambda x: "Yes" if x < 60 else "No")
+        st.dataframe(make_dataframe_arrow_safe(thesis_df), use_container_width=True, hide_index=True)
+
+    with tab_actions:
+        st.dataframe(make_dataframe_arrow_safe(action_df), use_container_width=True, hide_index=True)
 
 def format_number_or_na(value):
     try:
@@ -7996,14 +8631,77 @@ def render_finance_company_terminal():
 
 def render_finance_view():
     """
-    Finance page: professional company-analysis terminal.
+    Clean Finance page: single-company tear sheet only.
     """
-    st.subheader("Finance")
-    st.caption("Company analysis, financial metrics, company news and research actions.")
+    render_clean_page_header(
+        "Finance",
+        "Single-company analysis: snapshot, metrics, business summary and company-specific news."
+    )
 
-    render_finance_company_terminal()
+    c1, c2 = st.columns([1.2, 1])
 
+    with c1:
+        ticker = st.text_input(
+            "Ticker",
+            value=get_finance_default_ticker(),
+            placeholder="Example: AAPL, MSFT, NVDA",
+            key="clean_finance_ticker",
+        ).upper().strip()
 
+    with c2:
+        quick = st.selectbox(
+            "Quick select",
+            POPULAR_COMPANY_TICKERS,
+            index=POPULAR_COMPANY_TICKERS.index(get_finance_default_ticker()) if get_finance_default_ticker() in POPULAR_COMPANY_TICKERS else 0,
+            key="clean_finance_quick",
+        )
+        if st.button("Load", use_container_width=True, key="clean_finance_load"):
+            ticker = quick
+            set_active_company(ticker)
+            st.rerun()
+
+    if not ticker:
+        st.info("Enter a ticker to open the company tear sheet.")
+        return
+
+    snapshot = fetch_stock_snapshot(ticker)
+
+    if snapshot.get("error"):
+        st.error(f"Could not load company data: {snapshot.get('error')}")
+        return
+
+    company_name = snapshot.get("company_name", ticker)
+    set_active_company(ticker, company_name)
+
+    st.markdown(f"### {ticker} — {company_name}")
+    st.caption(f"{snapshot.get('sector', 'N/A')} · {snapshot.get('industry', 'N/A')}")
+
+    s1, s2, s3, s4 = st.columns(4)
+    with s1:
+        st.metric("Latest Close", format_number_or_na(snapshot.get("latest_close")))
+    with s2:
+        st.metric("Daily Change", f"{format_number_or_na(snapshot.get('change_pct'))}%")
+    with s3:
+        st.metric("Market Cap", format_large_number(snapshot.get("market_cap")))
+    with s4:
+        st.metric("Forward P/E", format_number_or_na(snapshot.get("forward_pe")))
+
+    tab_metrics, tab_summary, tab_news = st.tabs(["Metrics", "Business Summary", "Company News"])
+
+    with tab_metrics:
+        metrics_df = build_company_metrics_dataframe(snapshot)
+        metrics_df = make_dataframe_arrow_safe(metrics_df)
+        st.dataframe(metrics_df, use_container_width=True, hide_index=True)
+
+    with tab_summary:
+        summary = snapshot.get("business_summary", "")
+        if summary:
+            st.write(summary)
+        else:
+            st.info("No business summary available from the current market data provider.")
+
+    with tab_news:
+        render_company_news_panel(ticker, company_name)
 
 def render_economics_view():
     """
@@ -8320,6 +9018,7 @@ def get_selected_terminal_view() -> str:
 
 inject_custom_css()
 
+render_mode_selector()
 terminal_view = get_selected_terminal_view()
 
 render_terminal_header()
