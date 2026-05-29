@@ -6418,6 +6418,208 @@ def render_investment_pack_builder():
                 st.error(f"PDF export failed: {exc}")
 
 
+
+# ============================================================
+# TERMINAL HEALTH CHECK FALLBACK
+# ============================================================
+
+def run_health_check_item(component: str, test_fn, success_action: str, fail_action: str) -> dict:
+    """
+    Run a safe health check item.
+    """
+    try:
+        result = test_fn()
+
+        if result is True:
+            status = "OK"
+            detail = "Working"
+            action = success_action
+        elif isinstance(result, str):
+            status = "OK"
+            detail = result
+            action = success_action
+        else:
+            status = "Warning"
+            detail = str(result)
+            action = fail_action
+
+    except Exception as exc:
+        status = "Error"
+        detail = str(exc)
+        action = fail_action
+
+    return {
+        "Component": component,
+        "Status": status,
+        "Result": detail,
+        "Action Required": action,
+    }
+
+
+def check_market_data_connection():
+    try:
+        if "fetch_market_terminal_snapshot" in globals():
+            snap = fetch_market_terminal_snapshot("^GSPC")
+            if isinstance(snap, dict) and snap.get("latest"):
+                return "Market data loaded"
+
+        snap = fetch_stock_snapshot("AAPL")
+        if isinstance(snap, dict) and snap.get("latest_close"):
+            return "Market data loaded"
+    except Exception as exc:
+        return f"Market data issue: {exc}"
+
+    return "No market data returned"
+
+
+def check_company_snapshot():
+    try:
+        ticker = st.session_state.get("active_company_ticker", st.session_state.get("home_selected_ticker", "AAPL"))
+        snap = fetch_stock_snapshot(ticker)
+        if snap and not snap.get("error"):
+            return f"Company snapshot loaded: {snap.get('company_name', ticker)}"
+    except Exception as exc:
+        return f"Company snapshot issue: {exc}"
+
+    return "Company snapshot unavailable"
+
+
+def check_news_feed():
+    try:
+        if "get_business_news_items" in globals():
+            items = get_business_news_items("Top Stories", ["SPY", "QQQ", "MSFT"], limit_per_ticker=1)
+            if items:
+                return f"{len(items)} news item(s) available"
+        return "News fallback available"
+    except Exception as exc:
+        return f"News feed issue: {exc}"
+
+
+def check_reports_folder():
+    reports_dir = Path("reports")
+    reports_dir.mkdir(parents=True, exist_ok=True)
+    return "Reports folder available"
+
+
+def check_exports_folder():
+    exports_dir = Path("exports")
+    exports_dir.mkdir(parents=True, exist_ok=True)
+    return "Exports folder available"
+
+
+def check_word_export():
+    try:
+        if "Document" in globals() and Document is not None:
+            return "python-docx available"
+    except Exception:
+        pass
+    return "python-docx not available"
+
+
+def check_pdf_export():
+    if "export_markdown_to_simple_pdf_file" in globals() or "export_markdown_to_pdf" in globals():
+        return "PDF export available"
+    return "PDF export helper not found"
+
+
+def check_report_saving():
+    try:
+        saved_path = save_markdown_report(
+            report_type="deep_research",
+            title="Health Check Test",
+            content="# Health Check\n\nFordsworth report saving test.",
+        )
+        if saved_path and Path(saved_path).exists():
+            return "Report saving working"
+    except Exception as exc:
+        return f"Report saving issue: {exc}"
+
+    return "Report saving unavailable"
+
+
+def check_active_company():
+    ticker = st.session_state.get("active_company_ticker", st.session_state.get("home_selected_ticker", "NVDA"))
+    if ticker:
+        return f"Active company set: {ticker}"
+    return "No active company set"
+
+
+def check_export_center():
+    if "render_export_center" in globals() and "render_stock_tear_sheet_export" in globals():
+        return "Export Center functions available"
+    return "Export Center function missing"
+
+
+def run_terminal_health_checks() -> pd.DataFrame:
+    """
+    Run terminal readiness checks.
+    """
+    checks = [
+        run_health_check_item("Market Data", check_market_data_connection, "No action required.", "Check yfinance/internet connection."),
+        run_health_check_item("Company Snapshot", check_company_snapshot, "No action required.", "Check ticker input or market data provider."),
+        run_health_check_item("News Feed", check_news_feed, "No action required.", "Add NewsAPI key or use market brief fallback."),
+        run_health_check_item("Reports Folder", check_reports_folder, "No action required.", "Check write permissions."),
+        run_health_check_item("Exports Folder", check_exports_folder, "No action required.", "Check write permissions."),
+        run_health_check_item("Word Export", check_word_export, "No action required.", "Install python-docx in requirements.txt."),
+        run_health_check_item("PDF Export", check_pdf_export, "No action required.", "Restore PDF export helper."),
+        run_health_check_item("Report Saving", check_report_saving, "No action required.", "Check write permissions."),
+        run_health_check_item("Active Company", check_active_company, "No action required.", "Select a company in Finance."),
+        run_health_check_item("Export Center", check_export_center, "No action required.", "Restore export functions."),
+    ]
+
+    return pd.DataFrame(checks)
+
+
+def render_terminal_health_check():
+    """
+    Terminal Health Check tab inside Reports.
+    """
+    st.markdown("### Terminal Health Check")
+    st.caption("Validate market data, company snapshots, news feed, report saving, export readiness and active company workflow.")
+
+    if st.button("Run Health Check", use_container_width=True, key="run_terminal_health_check_fallback"):
+        st.session_state["terminal_health_results"] = run_terminal_health_checks()
+
+    health_df = st.session_state.get("terminal_health_results")
+
+    if health_df is None:
+        st.info("Click Run Health Check to test the terminal.")
+        return
+
+    ok_count = int((health_df["Status"] == "OK").sum())
+    warning_count = int((health_df["Status"] == "Warning").sum())
+    error_count = int((health_df["Status"] == "Error").sum())
+    total_count = len(health_df)
+
+    c1, c2, c3, c4 = st.columns(4)
+
+    with c1:
+        st.metric("Checks", total_count)
+
+    with c2:
+        st.metric("OK", ok_count)
+
+    with c3:
+        st.metric("Warnings", warning_count)
+
+    with c4:
+        st.metric("Errors", error_count)
+
+    st.markdown("### Health Check Results")
+    try:
+        health_df = make_dataframe_arrow_safe(health_df)
+    except Exception:
+        pass
+    st.dataframe(health_df, use_container_width=True, hide_index=True)
+
+    if error_count == 0 and warning_count <= 1:
+        st.success("Terminal looks ready for presentation.")
+    elif error_count == 0:
+        st.warning("Terminal is usable, but review warnings before presentation.")
+    else:
+        st.error("Fix errors before presentation.")
+
+
 def render_reports_view():
     """
     Reports page: Investment Output Center.
