@@ -7002,39 +7002,164 @@ def build_company_metrics_dataframe(snapshot: dict) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+
+
+
+
+def get_newsapi_company_news(ticker_symbol: str, company_name: str, max_items: int = 8) -> list[dict]:
+    """Optional NewsAPI company-specific feed using NEWS_API_KEY from Streamlit secrets or environment."""
+    api_key = ""
+    try:
+        api_key = st.secrets.get("NEWS_API_KEY", "")
+    except Exception:
+        api_key = ""
+    if not api_key:
+        try:
+            api_key = os.getenv("NEWS_API_KEY", "")
+        except Exception:
+            api_key = ""
+    if not api_key:
+        return []
+    try:
+        query = f'"{company_name}" OR {ticker_symbol}'
+        url = "https://newsapi.org/v2/everything?" + urllib.parse.urlencode({
+            "q": query,
+            "language": "en",
+            "sortBy": "publishedAt",
+            "pageSize": max_items,
+            "apiKey": api_key,
+        })
+        request = urllib.request.Request(url, headers={"User-Agent": "FordsworthTerminal/1.0"})
+        with urllib.request.urlopen(request, timeout=10) as response:
+            payload = json.loads(response.read().decode("utf-8", errors="ignore"))
+        items = []
+        for article in payload.get("articles", [])[:max_items]:
+            title = clean_html_summary(article.get("title") or "")
+            if not title:
+                continue
+            items.append({
+                "Title": title,
+                "Publisher": article.get("source", {}).get("name", "NewsAPI"),
+                "Published": article.get("publishedAt", "Recent"),
+                "Summary": clean_html_summary(article.get("description") or article.get("content") or ""),
+                "URL": article.get("url", ""),
+            })
+        return items
+    except Exception:
+        return []
+
+
+@st.cache_data(ttl=900)
+def fetch_company_specific_news_items(ticker_symbol: str, company_name: str, max_items: int = 8) -> list[dict]:
+    """Fetch news specifically for the selected company/ticker. Finance should not show broad general news here."""
+    ticker_symbol = (ticker_symbol or "").upper().strip()
+    company_name = (company_name or ticker_symbol).strip()
+    if not ticker_symbol:
+        return []
+
+    company_terms = {ticker_symbol.lower()}
+    for part in re.split(r"\s+|,|\.|\(|\)|-|/", company_name):
+        part = part.strip().lower()
+        if len(part) >= 4:
+            company_terms.add(part)
+
+    def related(title: str, summary: str = "") -> bool:
+        combined = f"{title} {summary}".lower()
+        return any(term in combined for term in company_terms)
+
+    items = []
+
+    # 1) NewsAPI if configured
+    try:
+        for item in get_newsapi_company_news(ticker_symbol, company_name, max_items=max_items):
+            if related(item.get("Title", ""), item.get("Summary", "")):
+                items.append(item)
+    except Exception:
+        pass
+
+    # 2) yfinance ticker-specific news
+    try:
+        ticker_obj = yf.Ticker(ticker_symbol)
+        yf_news = getattr(ticker_obj, "news", []) or []
+        for item in yf_news[: max_items * 3]:
+            title = clean_html_summary(item.get("title") or "No title")
+            summary = clean_html_summary(item.get("summary") or item.get("description") or item.get("content") or "")
+            if not title or title == "No title":
+                continue
+            provider_publish_time = item.get("providerPublishTime")
+            if provider_publish_time:
+                try:
+                    published = pd.to_datetime(provider_publish_time, unit="s").strftime("%Y-%m-%d %H:%M")
+                except Exception:
+                    published = "Recent"
+            else:
+                published = "Recent"
+            if related(title, summary) or len(items) < 2:
+                items.append({
+                    "Title": title,
+                    "Publisher": item.get("publisher") or item.get("source") or "Market source",
+                    "Published": published,
+                    "Summary": summary if summary else f"Company news item related to {company_name} ({ticker_symbol}).",
+                    "URL": item.get("link") or item.get("url") or "",
+                })
+    except Exception:
+        pass
+
+    # 3) optional existing helper fallback
+    if len(items) < max_items:
+        try:
+            context = {"ticker": ticker_symbol, "company_name": company_name}
+            articles = fetch_company_news(context, page_size=max_items)
+            for article in articles:
+                title = clean_html_summary(article.get("title") or "No title")
+                summary = clean_html_summary(article.get("description") or article.get("summary") or "")
+                if related(title, summary):
+                    items.append({
+                        "Title": title,
+                        "Publisher": article.get("source") or article.get("publisher") or "Market source",
+                        "Published": article.get("published_at") or article.get("published") or "Recent",
+                        "Summary": summary if summary else f"Company-specific news item for {ticker_symbol}.",
+                        "URL": article.get("url") or article.get("link") or "",
+                    })
+        except Exception:
+            pass
+
+    deduped = []
+    seen = set()
+    for item in items:
+        key = item.get("Title", "").strip().lower()
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        deduped.append(item)
+    return deduped[:max_items]
+
+
 def render_company_news_panel(ticker: str, company_name: str):
-    """
-    Company-specific news panel for the selected ticker.
-    This avoids showing broad/general business news inside Finance.
-    """
+    """Company-specific news panel for the selected ticker."""
     st.markdown("### Company News")
     st.caption(f"News specifically related to {company_name} ({ticker}).")
-
-    news_items = fetch_company_specific_news_items(ticker, company_name, max_items=8)
-
-    if not news_items:
-        st.info(
-            f"No company-specific news found for {company_name} ({ticker}) from the current feeds. "
-            "Try refreshing later or use Research → Deep Research for a broader company memo."
-        )
+    try:
+        news_items = fetch_company_specific_news_items(ticker, company_name, max_items=8)
+    except Exception as exc:
+        st.warning(f"Company news could not be loaded for {ticker}.")
+        st.caption(str(exc))
         return
-
-    for idx, item in enumerate(news_items):
-        title = item.get("Title", "No title")
-        publisher = item.get("Publisher", "Market source")
-        published = item.get("Published", "Recent")
-        summary = item.get("Summary", "")
-        url = item.get("URL", "")
-
+    if not news_items:
+        st.info(f"No company-specific news found for {company_name} ({ticker}) from the current feeds. Try refreshing later or use Research → Deep Research for a broader company memo.")
+        return
+    for item in news_items:
         with st.container(border=True):
-            st.markdown(f"**{title}**")
-            st.caption(f"{publisher} · {published}")
-
+            st.markdown(f"**{item.get('Title', 'No title')}**")
+            st.caption(f"{item.get('Publisher', 'Market source')} · {item.get('Published', 'Recent')}")
+            summary = item.get('Summary', '')
             if summary:
-                st.write(summary[:420] + ("..." if len(summary) > 420 else ""))
-
+                st.write(summary[:520] + ("..." if len(summary) > 520 else ""))
+            url = item.get('URL', '')
             if url:
                 st.link_button("Open Source", url, use_container_width=True)
+
+
 
 
 def render_finance_research_actions(ticker: str):
