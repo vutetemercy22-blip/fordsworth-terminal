@@ -2043,6 +2043,15 @@ def inject_custom_css():
             line-height: 1.45;
         }
 
+
+        .external-news-card .live-news-headline {
+            color: #f9fafb;
+            font-size: 0.96rem;
+            font-weight: 900;
+            line-height: 1.34;
+            margin-bottom: 0.25rem;
+        }
+
         </style>
         """,
         unsafe_allow_html=True,
@@ -3112,6 +3121,20 @@ RSS_FEEDS_BY_SECTION = {
 
 
 @st.cache_data(ttl=900)
+
+def clean_html_summary(raw_text: str) -> str:
+    """
+    Clean RSS/HTML descriptions into readable news summaries.
+    """
+    text = str(raw_text or "")
+    text = html.unescape(text)
+    text = re.sub(r"(?is)<script.*?>.*?</script>", " ", text)
+    text = re.sub(r"(?is)<style.*?>.*?</style>", " ", text)
+    text = re.sub(r"<[^>]+>", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return clean_markdown_line(text)
+
+
 def fetch_rss_items(feed_url: str, max_items: int = 10) -> list[dict]:
     """
     Fetch RSS/Atom feed items using Python standard library only.
@@ -3150,7 +3173,7 @@ def fetch_rss_items(feed_url: str, max_items: int = 10) -> list[dict]:
                         "Title": html.unescape(clean_markdown_line(title)),
                         "Publisher": feed_url.replace("https://", "").replace("http://", "").split("/")[0],
                         "Published": html.unescape(pub_date),
-                        "Summary": html.unescape(clean_markdown_line(description)),
+                        "Summary": clean_html_summary(description),
                         "URL": link,
                     }
                 )
@@ -3168,7 +3191,7 @@ def fetch_rss_items(feed_url: str, max_items: int = 10) -> list[dict]:
                         "Title": html.unescape(clean_markdown_line(title)),
                         "Publisher": feed_url.replace("https://", "").replace("http://", "").split("/")[0],
                         "Published": html.unescape(updated),
-                        "Summary": html.unescape(clean_markdown_line(summary)),
+                        "Summary": clean_html_summary(summary),
                         "URL": link,
                     }
                 )
@@ -3234,7 +3257,7 @@ def get_newsapi_business_news(section_name: str, max_items: int = 12) -> list[di
 
             source = article.get("source", {}).get("name", "NewsAPI")
             published = article.get("publishedAt", "Recent")
-            summary = clean_markdown_line(article.get("description") or "")
+            summary = clean_html_summary(article.get("description") or article.get("content") or "")
             link = article.get("url", "")
 
             items.append(
@@ -3321,7 +3344,7 @@ def get_business_news_items(section_name: str, tickers: list[str], limit_per_tic
                 publisher = item.get("publisher") or item.get("source") or "Market source"
                 link = item.get("link") or item.get("url") or ""
                 provider_publish_time = item.get("providerPublishTime")
-                summary = clean_markdown_line(item.get("summary") or item.get("description") or "")
+                summary = clean_html_summary(item.get("summary") or item.get("description") or item.get("content") or "")
 
                 if provider_publish_time:
                     try:
@@ -3395,40 +3418,50 @@ def render_clean_market_brief_fallback(section_key: str = "market"):
 
 def render_live_news_items(items: list[dict], max_items: int = 8, section_key: str = "general"):
     """
-    Render real news items as external source links.
-    If no live headlines are available, show a clean market brief rather than a technical error/configuration message.
+    Render Home news as Bloomberg-style news cards:
+    headline, source/time, readable summary and source button.
     """
     if not items:
-        render_clean_market_brief_fallback(section_key)
+        if "render_clean_market_brief_fallback" in globals():
+            render_clean_market_brief_fallback(section_key)
+        else:
+            st.info("No news available at the moment.")
         return
 
     st.markdown(
-        '<div class="external-news-note">Click a headline to open the full story from the original source.</div>',
+        '<div class="external-news-note">Click the source button to open the full article.</div>',
         unsafe_allow_html=True,
     )
 
     for idx, item in enumerate(items[:max_items]):
-        title = item.get("Title", "No title")
-        publisher = item.get("Publisher", "Market source")
-        published = item.get("Published", "Recent")
-        summary = item.get("Summary", "")
+        title = clean_html_summary(item.get("Title", "No title"))
+        publisher = clean_html_summary(item.get("Publisher", "Market source"))
+        published = clean_html_summary(item.get("Published", "Recent"))
+        summary = clean_html_summary(item.get("Summary", ""))
         url = item.get("URL", "")
+
+        if not summary:
+            summary = (
+                "Summary is not provided by this news feed. Open the original source for the full article, "
+                "or configure a dedicated news API for richer story summaries."
+            )
 
         st.markdown(
             f"""
             <div class="external-news-card">
+                <div class="live-news-headline">{title}</div>
                 <div class="external-news-meta">{publisher} · {published}</div>
-                <div class="external-news-summary">{summary[:240]}{"..." if len(summary) > 240 else ""}</div>
+                <div class="external-news-summary">{summary[:520]}{"..." if len(summary) > 520 else ""}</div>
             </div>
             """,
             unsafe_allow_html=True,
         )
 
         if url:
-            st.link_button(title, url, use_container_width=True)
+            st.link_button("Open full article", url, use_container_width=True)
         else:
             st.button(
-                title,
+                "Source unavailable",
                 key=f"{section_key}_{idx}_no_source_news",
                 use_container_width=True,
                 disabled=True,
@@ -6170,6 +6203,219 @@ def render_agents_view():
     with research_tabs[7]:
         render_research_pack_workflow()
 
+
+
+
+# ============================================================
+# INVESTMENT OUTPUT CENTER FALLBACK HELPERS
+# ============================================================
+
+INVESTMENT_OUTPUT_SOURCES = {
+    "Morning Briefings": "morning_briefs",
+    "Market Curator": "market_curator",
+    "Thesis Reviews": "thesis_reviews",
+    "Event Calendars": "weekly_calendars",
+    "Deep Research / Analyst Modules": "deep_research",
+    "Valuation Reports": "valuation_reports",
+}
+
+
+def get_report_count_safe(report_type: str) -> int:
+    try:
+        return len(list_reports(report_type))
+    except Exception:
+        return 0
+
+
+def get_latest_report_safe(report_type: str):
+    try:
+        return get_latest_report(report_type)
+    except Exception:
+        try:
+            reports = list_reports(report_type)
+            return reports[0] if reports else None
+        except Exception:
+            return None
+
+
+def read_report_safe(path_obj):
+    if not path_obj:
+        return ""
+    try:
+        return read_report(path_obj)
+    except Exception:
+        try:
+            return Path(path_obj).read_text(encoding="utf-8")
+        except Exception:
+            return ""
+
+
+def collect_output_center_summary():
+    rows = []
+    for label, report_type in INVESTMENT_OUTPUT_SOURCES.items():
+        latest = get_latest_report_safe(report_type)
+        count = get_report_count_safe(report_type)
+        if latest:
+            try:
+                modified = pd.to_datetime(latest.stat().st_mtime, unit="s").strftime("%Y-%m-%d %H:%M:%S")
+                latest_file = latest.name
+            except Exception:
+                modified = "N/A"
+                latest_file = str(latest)
+        else:
+            modified = "N/A"
+            latest_file = "No report"
+        rows.append({"Output Type": label, "Reports": count, "Latest File": latest_file, "Modified": modified})
+    return pd.DataFrame(rows)
+
+
+def build_latest_outputs_table():
+    rows = []
+    for label, report_type in INVESTMENT_OUTPUT_SOURCES.items():
+        latest = get_latest_report_safe(report_type)
+        if latest:
+            try:
+                modified = pd.to_datetime(latest.stat().st_mtime, unit="s").strftime("%Y-%m-%d %H:%M:%S")
+                file_name = latest.name
+            except Exception:
+                modified = "N/A"
+                file_name = str(latest)
+            rows.append({"Output Type": label, "File": file_name, "Modified": modified, "Path Object": latest})
+    return rows
+
+
+def render_output_center_overview():
+    st.markdown("### Investment Output Center")
+    st.caption("Review saved outputs, archives, investment packs and export readiness.")
+    summary_df = collect_output_center_summary()
+    total_outputs = int(summary_df["Reports"].sum()) if not summary_df.empty else 0
+    valuation_count = get_report_count_safe("valuation_reports")
+    research_count = get_report_count_safe("deep_research")
+    latest_sources = len(build_latest_outputs_table())
+    c1, c2, c3, c4 = st.columns(4)
+    with c1:
+        st.metric("Saved Outputs", total_outputs)
+    with c2:
+        st.metric("Research Outputs", research_count)
+    with c3:
+        st.metric("Valuation Outputs", valuation_count)
+    with c4:
+        st.metric("Latest Sources", latest_sources)
+    st.markdown("### Output Inventory")
+    summary_df = make_dataframe_arrow_safe(summary_df)
+    st.dataframe(summary_df, use_container_width=True, hide_index=True)
+
+
+def render_latest_outputs_center():
+    st.markdown("### Latest Research Outputs")
+    rows = build_latest_outputs_table()
+    if not rows:
+        st.info("No saved outputs found yet. Generate outputs from Research, Valuation or Risk first.")
+        return
+    display_df = pd.DataFrame([{"Output Type": r["Output Type"], "File": r["File"], "Modified": r["Modified"]} for r in rows])
+    display_df = make_dataframe_arrow_safe(display_df)
+    st.dataframe(display_df, use_container_width=True, hide_index=True)
+    selected_file = st.selectbox("Open latest output", [r["File"] for r in rows], key="latest_output_open_select_fallback")
+    selected_row = next(r for r in rows if r["File"] == selected_file)
+    with st.expander("Open selected output", expanded=True):
+        st.markdown(read_report_safe(selected_row["Path Object"]) or "Could not read selected output.")
+
+
+def render_report_archive_center():
+    st.markdown("### Report Archive")
+    archive_type = st.selectbox("Archive type", list(INVESTMENT_OUTPUT_SOURCES.keys()), key="archive_type_select_fallback")
+    report_type = INVESTMENT_OUTPUT_SOURCES[archive_type]
+    try:
+        reports = list_reports(report_type)
+    except Exception:
+        reports = []
+    if not reports:
+        st.info("No reports found for this archive type.")
+        return
+    archive_rows = []
+    for p in reports[:50]:
+        try:
+            modified = pd.to_datetime(p.stat().st_mtime, unit="s").strftime("%Y-%m-%d %H:%M:%S")
+            name = p.name
+        except Exception:
+            modified = "N/A"
+            name = str(p)
+        archive_rows.append({"File": name, "Modified": modified, "Path Object": p})
+    archive_df = pd.DataFrame([{"File": r["File"], "Modified": r["Modified"]} for r in archive_rows])
+    archive_df = make_dataframe_arrow_safe(archive_df)
+    st.dataframe(archive_df, use_container_width=True, hide_index=True)
+    selected = st.selectbox("Open archived report", [r["File"] for r in archive_rows], key="archive_open_report_select_fallback")
+    selected_row = next(r for r in archive_rows if r["File"] == selected)
+    with st.expander("Open archived report", expanded=False):
+        st.markdown(read_report_safe(selected_row["Path Object"]))
+
+
+def build_investment_pack_content(selected_report_types: list[str], pack_title: str, ticker: str = "") -> str:
+    report = f"# {pack_title}\n\n"
+    if ticker:
+        report += f"**Target ticker / company:** {ticker}\n\n"
+    report += "## Pack Contents\n\n"
+    for label, report_type in INVESTMENT_OUTPUT_SOURCES.items():
+        if report_type in selected_report_types:
+            report += f"- {label}\n"
+    report += "\n---\n\n"
+    included_any = False
+    for label, report_type in INVESTMENT_OUTPUT_SOURCES.items():
+        if report_type not in selected_report_types:
+            continue
+        latest = get_latest_report_safe(report_type)
+        content = read_report_safe(latest)
+        report += f"# {label}\n\n"
+        if latest is None or not content:
+            report += "No saved output available for this section.\n\n"
+        else:
+            included_any = True
+            try:
+                report += f"**Source file:** {latest.name}\n\n"
+            except Exception:
+                report += f"**Source file:** {latest}\n\n"
+            report += content + "\n\n---\n\n"
+    if not included_any:
+        report += "No saved reports were available. Generate Research, Valuation or Risk outputs first.\n"
+    report += "\n# Analyst Final Checklist\n\n- Confirm the investment thesis is clear.\n- Confirm risks are documented.\n- Confirm valuation assumptions are reasonable.\n- Confirm position size aligns with conviction.\n"
+    return report
+
+
+def render_investment_pack_builder():
+    st.markdown("### Build Investment Pack")
+    st.caption("Combine latest saved outputs into one investment pack.")
+    ticker = st.text_input("Target ticker / company", value=st.session_state.get("active_company_ticker", st.session_state.get("home_selected_ticker", "NVDA")), key="pack_builder_ticker_fallback").upper().strip()
+    selected_labels = st.multiselect("Select sections to include", list(INVESTMENT_OUTPUT_SOURCES.keys()), default=["Deep Research / Analyst Modules", "Valuation Reports"], key="pack_builder_sections_fallback")
+    selected_report_types = [INVESTMENT_OUTPUT_SOURCES[label] for label in selected_labels]
+    pack_title = st.text_input("Pack title", value=f"Investment Pack {ticker}" if ticker else "Investment Pack", key="pack_builder_title_fallback")
+    pack_content = build_investment_pack_content(selected_report_types, pack_title, ticker)
+    with st.expander("Preview investment pack", expanded=False):
+        st.markdown(pack_content)
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        if st.button("Save Investment Pack", use_container_width=True, key="save_investment_pack_fallback"):
+            saved_path = save_markdown_report(report_type="deep_research", title=pack_title, content=pack_content)
+            st.success(f"Investment pack saved: {Path(saved_path).name}")
+    with c2:
+        if st.button("Export Pack to Word", use_container_width=True, key="export_pack_word_fallback"):
+            export_dir = Path("exports"); export_dir.mkdir(parents=True, exist_ok=True)
+            safe_name = re.sub(r"[^A-Za-z0-9_-]+", "_", pack_title).strip("_")
+            word_path = export_dir / f"{safe_name}.docx"
+            try:
+                export_markdown_to_word_file(pack_content, pack_title, word_path)
+                render_file_download(word_path, "Download Word Investment Pack", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+            except Exception as exc:
+                st.error(f"Word export failed: {exc}")
+    with c3:
+        if st.button("Export Pack to PDF", use_container_width=True, key="export_pack_pdf_fallback"):
+            export_dir = Path("exports"); export_dir.mkdir(parents=True, exist_ok=True)
+            safe_name = re.sub(r"[^A-Za-z0-9_-]+", "_", pack_title).strip("_")
+            pdf_path = export_dir / f"{safe_name}.pdf"
+            try:
+                export_markdown_to_simple_pdf_file(pack_content, pack_title, pdf_path)
+                render_file_download(pdf_path, "Download PDF Investment Pack", "application/pdf")
+            except Exception as exc:
+                st.error(f"PDF export failed: {exc}")
 
 
 def render_reports_view():
